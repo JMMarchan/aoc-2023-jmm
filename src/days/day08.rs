@@ -80,6 +80,10 @@ where
 // We want to find the number of steps such that every version of us exits the network at a node ending with Z.
 // This cannot be brute-forced, so we need to find a way to calculate it.
 // Finding the smallest number of steps such that all nodes exit the network at the same time is equivalent to finding the least common multiple of the number of steps it takes for each node to exit the network.
+// ! No it's not, but it just happens to work anyway because of how the input is constructed.
+// ! See https://old.reddit.com/r/adventofcode/comments/18dfpub/ for discussion.
+// ! Consider three nodes, A, N, and Z. It takes h steps to go from A to N, takes m steps to go from N to Z, and takes t steps to go from Z to N (thus giving a cycle of length m + t with node Z). It just happens by construction of the puzzle input that h = t, and so the path from A to Z has length h + m = m + t. But this is not true in general.
+// ! Hypothetically, a general solution would use Chinese Remainder Theorem, however, even then we aren't guaranteed equal length cycles because it could be possible to hit multiple exit nodes in the same cycle.
 fn steps_to_exit_multiple_starts(input: &[&str]) -> u64 {
     let instructions = input[0].chars().collect::<Vec<_>>();
     let nodes = parse_nodes(&input[2..]);
