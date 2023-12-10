@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use regex::Regex;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -14,14 +15,18 @@ pub fn solve() -> SolutionPair {
 
 // For each line, concatenate the first and last digits of the line, and sum the results.
 fn concatenate_and_sum(input: &[&str]) -> u32 {
+    let re = Regex::new(r"\d").unwrap();
     input
         .iter()
-        .map(|line| {
-            let first_digit = line.chars().find(|c| c.is_digit(10)).unwrap();
-            let last_digit = line.chars().rev().find(|c| c.is_digit(10)).unwrap();
-            format!("{}{}", first_digit, last_digit)
-                .parse::<u32>()
-                .unwrap()
+        .filter_map(|line| {
+            let matches: Vec<_> = re.find_iter(line).collect();
+            let first_digit = matches.first()?;
+            let last_digit = matches.last()?;
+            Some(
+                format!("{}{}", first_digit.as_str(), last_digit.as_str())
+                    .parse::<u32>()
+                    .unwrap(),
+            )
         })
         .sum()
 }
@@ -47,64 +52,59 @@ fn parse_concat_sum(input: &[&str]) -> u32 {
         .sum()
 }
 
-const DIGIT_WORDS: [&str; 10] = [
-    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
-];
-
-// Finds either the first or last digit (depending on find_last) in a given line.
 fn find_digit(line: &str, find_last: bool) -> Option<u32> {
-    let mut first_occurrences = Vec::new();
-    let mut last_occurrences = Vec::new();
+    let re = Regex::new(r"(zero|one|two|three|four|five|six|seven|eight|nine|\d)").unwrap();
+    let mut matches: Vec<_> = re
+        .find_iter(line)
+        .map(|m| (m.start(), m.as_str()))
+        .collect();
 
-    // Iterate over each word in DIGIT_WORDS to find their occurrences.
-    for &word in DIGIT_WORDS.iter() {
-        if let Some(index) = line.find(word) {
-            first_occurrences.push((index, word));
-        }
-        if let Some(index) = line.rfind(word) {
-            last_occurrences.push((index, word));
-        }
+    // Sort the matches by their start index
+    matches.sort_by_key(|&(index, _)| index);
+
+    let digit = if find_last {
+        matches.last()
+    } else {
+        matches.first()
+    };
+
+    digit.and_then(|&(_, digit_str)| match digit_str {
+        "zero" => Some(0),
+        "one" => Some(1),
+        "two" => Some(2),
+        "three" => Some(3),
+        "four" => Some(4),
+        "five" => Some(5),
+        "six" => Some(6),
+        "seven" => Some(7),
+        "eight" => Some(8),
+        "nine" => Some(9),
+        _ => digit_str.parse().ok(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_concatenate_and_sum() {
+        let input = ["1abc2", "pqr3stu8vwx", "a1b2c3d4e5f", "treb7uchet"];
+        assert_eq!(concatenate_and_sum(&input), 142);
     }
 
-    // Sort the occurrences to find the first and last word-digit.
-    first_occurrences.sort_by_key(|&(index, _)| index);
-    last_occurrences.sort_by_key(|&(index, _)| index);
-
-    let word_digit = if find_last {
-        last_occurrences.last().cloned()
-    } else {
-        first_occurrences.first().cloned()
-    };
-
-    // Find either the first or last usual digit.
-    let usual_digit = if find_last {
-        line.chars()
-            .rev()
-            .enumerate()
-            .find(|&(_, c)| c.is_digit(10))
-            .map(|(i, c)| (line.len() - 1 - i, c))
-    } else {
-        line.chars().enumerate().find(|(_, c)| c.is_digit(10))
-    };
-
-    // Determine which digit comes first/last and convert to a number.
-    match (word_digit, usual_digit) {
-        // If both word and usual digit are found, select based on their indices and the find_last flag.
-        (Some((idx_word, word)), Some((idx_usual, _)))
-            if (find_last && idx_word > idx_usual) || (!find_last && idx_word < idx_usual) =>
-        {
-            DIGIT_WORDS
-                .iter()
-                .position(|&w| w == word)
-                .map(|pos| pos as u32) // Convert word to its corresponding digit.
-        }
-        // If only a usual digit is found, convert it to a number.
-        (_, Some((_, digit))) => Some(digit.to_digit(10).unwrap()),
-        // If only a word digit is found, convert it to its corresponding number.
-        (Some((_, word)), _) => DIGIT_WORDS
-            .iter()
-            .position(|&w| w == word)
-            .map(|pos| pos as u32),
-        _ => None,
+    #[test]
+    fn test_parse_concat_sum() {
+        let input = [
+            "two1nine",
+            "eightwothree",
+            "abcone2threexyz",
+            "xtwone3four",
+            "4nineeightseven2",
+            "zoneight234",
+            "7pqrstsixteen",
+            "oneighthree",
+        ];
+        assert_eq!(parse_concat_sum(&input), 294);
     }
 }
