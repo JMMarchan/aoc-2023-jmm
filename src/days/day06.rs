@@ -32,36 +32,30 @@ fn product_of_ways_to_beat_records(input: &[&str]) -> u64 {
 
     let mut product = 1;
     for (time, distance) in times.iter().zip(distances.iter()) {
-        // possibilities for time = 7
-        // 0 charge -> 0mm/ms for 7ms -> 0mm
-        // 1 charge -> 1mm/ms for 6ms -> 6mm
-        // 2 charge -> 2mm/ms for 5ms -> 10mm
-        // 3 charge -> 3mm/ms for 4ms -> 12mm
-        // 4 charge -> 4mm/ms for 3ms -> 12mm
-        // 5 charge -> 5mm/ms for 2ms -> 10mm
-        // 6 charge -> 6mm/ms for 1ms -> 6mm
-        // 7 charge -> 7mm/ms for 0ms -> 0mm
-        // The record is 9mm, so we can beat it with 2 charges, 3 charges, 4 charges, and 5 charges.
-        // The number of ways to beat the record is 5.
-        let optimal_charge = time / 2;
-        let mut ways_to_beat_record = 0;
-
-        for charge in 0..=optimal_charge {
-            let distance_covered = charge * (time - charge);
-            if distance_covered > *distance {
-                // Count this charge and its mirror charge if it's different
-                ways_to_beat_record += if charge == optimal_charge && time % 2 == 0 {
-                    1
-                } else {
-                    2
-                };
-            }
-        }
-
+        let ways_to_beat_record = calculate_ways_to_beat_record(*time, *distance);
         product *= ways_to_beat_record;
     }
 
     product
+}
+
+fn calculate_ways_to_beat_record(time: u64, distance: u64) -> u64 {
+    let optimal_charge = time / 2;
+    let mut ways_to_beat_record = 0;
+
+    for charge in 0..=optimal_charge {
+        let distance_covered = charge * (time - charge);
+        if distance_covered > distance {
+            // Count this charge and its mirror charge if it's different
+            ways_to_beat_record += if charge == optimal_charge && time % 2 == 0 {
+                1
+            } else {
+                2
+            };
+        }
+    }
+
+    ways_to_beat_record
 }
 
 // In the second part, the input is the same, but we parse it differently just by concatening the numbers in each line into a single number.
@@ -80,22 +74,7 @@ fn ways_to_beat_record(input: &[&str]) -> u64 {
         .parse()
         .unwrap();
 
-    let optimal_charge = time / 2;
-    let mut ways_to_beat_record = 0;
-
-    for charge in 0..=optimal_charge {
-        let distance_covered = charge * (time - charge);
-        if distance_covered > distance {
-            // Count this charge and its mirror charge if it's different
-            ways_to_beat_record += if charge == optimal_charge && time % 2 == 0 {
-                1
-            } else {
-                2
-            };
-        }
-    }
-
-    ways_to_beat_record
+    calculate_ways_to_beat_record(time, distance)
 }
 
 #[cfg(test)]
