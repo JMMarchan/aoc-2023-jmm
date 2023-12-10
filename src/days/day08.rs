@@ -20,58 +20,8 @@ pub fn solve() -> SolutionPair {
 // We want to find the number of steps to exit the network, where the start node is AAA and the end node is ZZZ
 fn steps_to_exit(input: &[&str]) -> u64 {
     let instructions = input[0].chars().collect::<Vec<_>>();
-
-    // parse the lines after the empty line as nodes in the format AAA = (BBB, CCC)
-    // getting the name of the node AAA, the left node BBB, and the right node CCC
-    // let nodes = input[2..]
-    //     .iter()
-    //     .map(|line| {
-    //         let mut line = line.split(" = ");
-    //         let name = line.next().unwrap();
-    //         let rest = line.next().unwrap().trim_matches(|c| c == '(' || c == ')');
-    //         let mut rest = rest.split(", ");
-    //         let left = rest.next().unwrap();
-    //         let right = rest.next().unwrap();
-    //         // println!("name: {:?}, left: {:?}, right: {:?}", name, left, right);
-    //         (name, left, right)
-    //     })
-    //     .collect::<Vec<_>>();
-    let nodes = parse_nodes(&input[2..]);
-
-    // starting with AAA, loop until we reach ZZZ
-    let mut current_node = "AAA";
-    let mut steps = 0;
-    loop {
-        // find the node with the name current_node
-        let node = nodes
-            .iter()
-            .find(|(name, _, _)| *name == current_node)
-            .unwrap();
-        let (_, left, right) = node;
-        // if the instruction is L, then go to the left node, otherwise go to the right node
-        let next_node = if instructions[steps % instructions.len()] == 'L' {
-            left
-        } else {
-            right
-        };
-        // print current node, instruction, and next node
-        // println!(
-        //     "current node: {:?}, instruction: {:?}, next node: {:?}",
-        //     current_node,
-        //     instructions[steps % instructions.len()],
-        //     next_node
-        // );
-        // if the next node is ZZZ, then we're done
-        if next_node == &"ZZZ" {
-            steps += 1;
-            break;
-        }
-        // otherwise, update the current node and increment the steps
-        current_node = next_node;
-        steps += 1;
-    }
-
-    steps as u64
+    let nodes: Vec<(String, String, String)> = parse_nodes(&input[2..]);
+    compute_steps_with_conditions("AAA", &instructions, &nodes, |node| node == "ZZZ")
 }
 
 fn parse_nodes(input: &[&str]) -> Vec<(String, String, String)> {
@@ -90,34 +40,16 @@ fn parse_nodes(input: &[&str]) -> Vec<(String, String, String)> {
         .collect::<Vec<_>>()
 }
 
-// In the second part, we note that there the number of nodes that end with the letter A and the letter Z are the same.
-// We are a ghost that exists at multiple nodes at once, and we want to find the number of steps it takes to exit the network.
-// So for example, if we have 11A = (11B, XXX) and 22A = (22B, XXX), then we start at 11A and 22A, and the first instruction is L, so we go to 11B and 22B.
-// We want to find the number of steps such that every version of us exits the network at a node ending with Z.
-// This cannot be brute-forced, so we need to find a way to calculate it. This is a variant of the Chinese Remainder Theorem.
-// Finding the smallest number of steps such that all nodes exit the network at the same time is equivalent to finding the least common multiple of the number of steps it takes for each node to exit the network.
-fn steps_to_exit_multiple_starts(input: &[&str]) -> u64 {
-    let instructions = input[0].chars().collect::<Vec<_>>();
-    let nodes = parse_nodes(&input[2..]);
-    let starting_nodes = nodes
-        .iter()
-        .filter(|(name, _, _)| name.ends_with('A'))
-        .collect::<Vec<_>>();
-
-    let path_lengths = starting_nodes
-        .iter()
-        .map(|&(name, _, _)| find_exit_steps(name, &instructions, &nodes))
-        .collect::<Vec<_>>();
-
-    let lcm = path_lengths
-        .iter()
-        .fold(1, |lcm, &length| lcm * length / gcd(lcm, length));
-
-    lcm
-}
-
-// Given a node, find the number of steps it takes to exit the network
-fn find_exit_steps(node: &str, instructions: &[char], nodes: &[(String, String, String)]) -> u64 {
+// Given a node, a list of instructions, a list of nodes, and a stop condition, find the number of steps it takes to exit the network
+fn compute_steps_with_conditions<F>(
+    node: &str,
+    instructions: &[char],
+    nodes: &[(String, String, String)],
+    stop: F,
+) -> u64
+where
+    F: Fn(&str) -> bool,
+{
     let mut current_node = node;
     let mut steps: usize = 0;
     loop {
@@ -131,7 +63,7 @@ fn find_exit_steps(node: &str, instructions: &[char], nodes: &[(String, String, 
         } else {
             right
         };
-        if next_node.ends_with('Z') {
+        if stop(next_node) {
             steps += 1;
             break;
         }
@@ -140,6 +72,34 @@ fn find_exit_steps(node: &str, instructions: &[char], nodes: &[(String, String, 
     }
 
     steps as u64
+}
+
+// In the second part, we note that there the number of nodes that end with the letter A and the letter Z are the same.
+// We are a ghost that exists at multiple nodes at once, and we want to find the number of steps it takes to exit the network.
+// So for example, if we have 11A = (11B, XXX) and 22A = (22B, XXX), then we start at 11A and 22A, and the first instruction is L, so we go to 11B and 22B.
+// We want to find the number of steps such that every version of us exits the network at a node ending with Z.
+// This cannot be brute-forced, so we need to find a way to calculate it.
+// Finding the smallest number of steps such that all nodes exit the network at the same time is equivalent to finding the least common multiple of the number of steps it takes for each node to exit the network.
+fn steps_to_exit_multiple_starts(input: &[&str]) -> u64 {
+    let instructions = input[0].chars().collect::<Vec<_>>();
+    let nodes = parse_nodes(&input[2..]);
+    let starting_nodes = nodes
+        .iter()
+        .filter(|(name, _, _)| name.ends_with('A'))
+        .collect::<Vec<_>>();
+
+    let path_lengths = starting_nodes
+        .iter()
+        .map(|&(name, _, _)| {
+            compute_steps_with_conditions(name, &instructions, &nodes, |node| node.ends_with('Z'))
+        })
+        .collect::<Vec<_>>();
+
+    let lcm = path_lengths
+        .iter()
+        .fold(1, |lcm, &length| lcm * length / gcd(lcm, length));
+
+    lcm
 }
 
 fn gcd(a: u64, b: u64) -> u64 {
