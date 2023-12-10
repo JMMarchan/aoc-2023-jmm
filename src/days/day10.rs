@@ -251,6 +251,19 @@ fn tiles_enclosed_by_loop(input: &[&str], start_type: TileType) -> u64 {
                 // print the original loop tile char
                 // print!("{}", input[i].chars().nth(j).unwrap());
 
+                // TODO: Simplify logic for counting vertical crossings
+                // Consider Vertical (NS); Horizontal (WE); and the set of bends: NorthEastBend (NE), SouthEastBend (SE), NorthWestBend (NW), and SouthWestBend (SW)).
+                // We read from left to right, incrementing on vertical crossings and finding the parity of tiles to determine if they are enclosed.
+                // Currently, we increment on NS, then we check each case of the pairs NW-SE, SW-NE, NW-NE, and SW-SE (plus any in between WE) to determine incrementing. However, we can simplify the logic by treating NW or NE like NS and just incrementing on them without any extra checks.
+                // The key observation is for vertical crossings is that all bends come in pairs since the loop is a simple closed curve. Thus:
+                //   - NE-SW or SE-NW adds 1 vertical crossing.
+                //   - NE-NW or SE-SW adds 0 vertical crossing.
+                // In the first case, we see NE or NW 1 time. In the second case we may see NE or NW 2 or 0 times, but that's just 0 mod 2 times.
+                // So we can simplify the logic:
+                //   - Count a vertical pipe (NS) as before.
+                //   - Count an NE or NW bend as a vertical crossing.
+                // This way, we don't need to keep track of the current bend and check if it's paired with the next bend.
+
                 // Check if it's a vertical crossing
                 // If it is, then increment the vertical crossings count
                 if let Some(tile) = grid.tiles.get(&(i, j)) {
