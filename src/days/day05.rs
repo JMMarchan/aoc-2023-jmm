@@ -1,5 +1,9 @@
 use crate::{Solution, SolutionPair};
-use std::fs::read_to_string;
+use std::{
+    cmp::Ordering,
+    fmt::{Display, Formatter},
+    fs::read_to_string,
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -13,45 +17,255 @@ pub fn solve() -> SolutionPair {
     (Solution::from(sol1), Solution::from(sol2))
 }
 
-// The input lists the seeds that need to be planted.
-// It also lists the soil, fertilizer, water, light, temperature, humidity, and location for each seed.
-// Every type of seed, soil, etc, has a number associated, but numbers are not necessarily unique between types.
-// The input starts with a list of seeds, each seed is a number.
-// The rest of the input contains a list of maps that describe how to convert numbers from a source to a destination.
-// For example, the first map is the seed-to-soil map, which describes how to convert seed numbers to soil numbers.
-// The maps describe ranges of numbers that can be converted: the destination range start, the source range start, and the range length
-// So for example, 50 96 4 means that the source range 50-53 maps to the destination range 96-99.
-// Any source numbers outside of the source range are mapped to the same destination number, so for example 10 maps to 10.
-// The seed-to-soil map is followed by the soil-to-fertilizer map, the fertilizer-to-water map, the water-to-light map, the light-to-temperature map, the temperature-to-humidity map, and the humidity-to-location map.
-// Find the lowest location number corresponding to any of the seeds.
-fn lowest_location_number(input: &[&str], range_based: bool) -> u64 {
-    // First, we need to parse the input, ie get the seeds, and the maps.
-    // The seeds are the first line, so we can just split the input into lines, and take the first line.
-    // The maps are the rest of the lines. We separate them into maps by splitting on blank lines.
-    // Then, we don't need the first line of each map, so we skip it.
-    // We create a hashmap for each set of map, where the key is the source number, and the value is the destination number.
+// A Map is essentially a piecewise function from u64 to u64.
+// All we need to store is the start of each range, and the shift for that range. The end of a range is the start of the next range.
+#[derive(Debug)]
+struct Map {
+    mappings: Vec<RangeShift>,
+}
 
+#[derive(Debug)]
+struct RangeShift {
+    range_start: u64,
+    shift: i64,
+}
+
+impl Display for Map {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // A mapping looks like [start, end) -> [start + shift, end + shift)
+        write!(f, "Mappings:\n")?;
+        let mut mappings = self.mappings.iter();
+        let mut current_mapping = mappings.next();
+        while let Some(mapping) = current_mapping {
+            let next_mapping = mappings.next();
+            match next_mapping {
+                Some(next_mapping) => writeln!(
+                    f,
+                    "[{}, {}) -> [{}, {}), Shift: {}",
+                    mapping.range_start,
+                    next_mapping.range_start,
+                    mapping.range_start as i64 + mapping.shift,
+                    next_mapping.range_start as i64 + mapping.shift,
+                    mapping.shift
+                )?,
+                None => write!(
+                    f,
+                    "[{}, u64::MAX) -> [{}, u64::MAX), Shift: 0",
+                    mapping.range_start, mapping.range_start
+                )?,
+            }
+            current_mapping = next_mapping;
+        }
+        Ok(())
+    }
+}
+
+impl Map {
+    fn new() -> Self {
+        Map {
+            mappings: vec![RangeShift {
+                range_start: 0,
+                shift: 0,
+            }],
+        }
+    }
+
+    fn add_range_shift(
+        &mut self,
+        source_range_start: u64,
+        destination_range_start: u64,
+        range_length: u64,
+    ) {
+        // We can calculate the shift from the source and destination range starts
+        // The shift is the difference between the destination range start and the source range start
+        // We also add a second mapping for the end of the range, which is the start of the next range, only if there isn't already a mapping for the end of the range
+        // for example, if the paramters are 50, 96, 4, then the first range shift has start 50 with shift 46, and the second range shift has start 54 with shift 0. Thus numbers 50-53 map to 96-99, and number 54 maps to 54.
+        // Let's say we call this function again with the parameters are 45, 55, 5, then the first range shift has start 45 with shift 10; however, the second range shift that would start at 50 already exists, so we don't add it. Thus numbers 45-49 map to 55-59.
+        let shift: i64 = destination_range_start as i64 - source_range_start as i64;
+        let new_shift = RangeShift {
+            range_start: source_range_start,
+            shift,
+        };
+        let end = source_range_start + range_length;
+        let end_shift = RangeShift {
+            range_start: end,
+            shift: 0,
+        };
+
+        // Insert the new shift in the sorted position, replacing if the existing shift is 0
+        let pos = self.mappings.binary_search_by(|probe| {
+            if probe.range_start < new_shift.range_start {
+                Ordering::Less
+            } else if probe.range_start > new_shift.range_start {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+        match pos {
+            Ok(pos) if self.mappings[pos].shift == 0 => self.mappings[pos] = new_shift,
+            Ok(_) => (), // The shift already exists and is not 0, do nothing
+            Err(pos) => self.mappings.insert(pos, new_shift),
+        }
+
+        // Insert the end shift in the sorted position, replacing if the existing shift is 0
+        let pos = self.mappings.binary_search_by(|probe| {
+            if probe.range_start < end_shift.range_start {
+                Ordering::Less
+            } else if probe.range_start > end_shift.range_start {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+        match pos {
+            Ok(_) => (), // The shift already exists and is not 0, do nothing
+            Err(pos) => self.mappings.insert(pos, end_shift),
+        }
+    }
+
+    fn get_destination(&self, source: u64) -> u64 {
+        // We can find the destination by finding the range shift that contains the source, and adding the shift to the source. The way we're storing range shifts, the range shift that contains the source is the one with the largest range start that is less than or equal to the source.
+        // All numbers u64 are in some range shift because the last range shift will be some n with shift 0, and all numbers greater than or equal to n will map to themselves.
+        let pos = self.mappings.binary_search_by(|probe| {
+            if probe.range_start < source {
+                Ordering::Less
+            } else if probe.range_start > source {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+        match pos {
+            Ok(pos) => (source as i64 + self.mappings[pos].shift) as u64,
+            Err(pos) => (source as i64 + self.mappings[pos - 1].shift) as u64,
+        }
+    }
+
+    fn transform_range(&self, range_start: u64, range_end: u64) -> Vec<(u64, u64)> {
+        // find the largest range shift that is less than or equal to the range start
+        // find the largest range shift that is less than or equal to the range end
+        // this may encompass one or multiple range shifts
+        // if it's just one, the vector will have one element, a tuple of the range start and range end run through the get_destination function
+        // if it's multiple, the vector will have multiple elements, each a tuple of the range start and range end run through the get_destination function. the number of elements will be the number of range shifts that overlapped by the range start and range end
+        // for example, if the rangeshifts are on [0, 20), [20, 30), [30, 50), and the input range is [10, 40], then the output vector will have three elements: [10, 20], [21, 30], [31, 40] whose endpoints are run through the get_destination function
+        let mut transformed_ranges = Vec::new();
+
+        // Use binary search to find the first relevant mapping
+        let start_index = match self
+            .mappings
+            .binary_search_by(|probe| probe.range_start.cmp(&range_start))
+        {
+            Ok(index) => index,
+            Err(index) => index,
+        };
+
+        // This loop splits the range into multiple ranges, each of which is transformed by a single mapping.
+        for (i, mapping) in self.mappings.iter().enumerate().skip(start_index - 1) {
+            // We've processed all relevant mappings
+            if mapping.range_start > range_end {
+                break;
+            }
+
+            // Skip the current mapping because it doesn't affect the range
+            if i < self.mappings.len() - 1 && self.mappings[i + 1].range_start <= range_start {
+                continue;
+            }
+
+            // Calculate the start and end of the transformed range.
+            // The start is the maximum of the start of the current mapping and the start of the range.
+            // The end is the minimum of the start of the next mapping and the end of the range,
+            // or the end of the range if there is no next mapping.
+            let start = std::cmp::max(mapping.range_start, range_start);
+            let end = if i < self.mappings.len() - 1 {
+                std::cmp::min(self.mappings[i + 1].range_start, range_end)
+            } else {
+                range_end
+            };
+
+            // Apply the shift to the start and end of the range to get the transformed range.
+            let transformed_start = (start as i64 + mapping.shift) as u64;
+            let transformed_end = (end as i64 + mapping.shift) as u64;
+
+            // Add the transformed range to the vector.
+            transformed_ranges.push((transformed_start, transformed_end));
+        }
+
+        transformed_ranges
+    }
+}
+
+fn lowest_location_number(input: &[&str], range_based: bool) -> u64 {
     let maps = input[1..]
         .split(|line| line.is_empty())
         .filter(|lines| !lines.is_empty()) // Filter out empty line groups
         .map(|lines| {
-            let mut range_map = RangeMap::new();
+            let mut map = Map::new();
             for line in lines.iter().skip(1) {
                 let (destination_range_start, source_range_start, range_length) =
                     parse_map_line(line);
-                range_map.add_mapping(source_range_start, destination_range_start, range_length);
+                map.add_range_shift(source_range_start, destination_range_start, range_length);
             }
-            range_map.sort_mappings();
-            range_map
+            map
         })
-        .collect::<Vec<RangeMap>>();
+        .collect::<Vec<Map>>();
 
     if range_based {
-        let ranges = parse_ranges(input[0]);
-        process_with_boundaries(ranges, maps)
+        let ranges = input[0]
+            .split_whitespace()
+            .skip(1)
+            .collect::<Vec<&str>>()
+            .chunks(2)
+            .map(|chunk| {
+                let start = chunk[0].parse::<u64>().unwrap();
+                let length = chunk[1].parse::<u64>().unwrap();
+                (start, start + length - 1)
+            })
+            .collect::<Vec<(u64, u64)>>();
+
+        let mut current_ranges = ranges;
+
+        // for each map, for each range, we transform the range, which may split it into multiple ranges if it spans multiple rangeshifts
+        for map in &maps {
+            let mut next_ranges = Vec::new();
+            for range in &current_ranges {
+                let transformed_ranges = map.transform_range(range.0, range.1);
+                for transformed_range in transformed_ranges {
+                    next_ranges.push(transformed_range);
+                }
+            }
+            // println!("{}", map);
+            // println!("Current: {:?}", current_ranges);
+            // println!("Next: {:?}", next_ranges);
+            current_ranges = next_ranges;
+        }
+
+        // find the minimum of the start and end points of the final ranges
+        current_ranges
+            .into_iter()
+            .map(|range| range.0.min(range.1))
+            .min()
+            .unwrap()
     } else {
-        let seeds = parse_single_seeds(input[0]);
-        process_seeds(seeds, maps)
+        let seeds = input[0]
+            .split_whitespace()
+            .skip(1)
+            .filter_map(|s| s.parse::<u64>().ok())
+            .collect::<Vec<u64>>();
+
+        let mut current_seeds = seeds;
+        for map in &maps {
+            let mut next_seeds = Vec::new();
+            for seed in &current_seeds {
+                next_seeds.push(map.get_destination(*seed));
+            }
+            // println!("{}", map);
+            // println!("Current: {:?}", current_seeds);
+            // println!("Next: {:?}", next_seeds);
+            current_seeds = next_seeds;
+        }
+
+        *current_seeds.iter().min().unwrap()
     }
 }
 
@@ -61,204 +275,6 @@ fn parse_map_line(line: &str) -> (u64, u64, u64) {
         .filter_map(|s| s.parse::<u64>().ok())
         .collect();
     (parts[0], parts[1], parts[2])
-}
-
-fn parse_single_seeds(input: &str) -> Vec<u64> {
-    input
-        .split_whitespace()
-        .skip(1) // skip the "seeds:" part
-        .filter_map(|s| s.parse::<u64>().ok())
-        .collect()
-}
-
-fn process_seeds(seeds: Vec<u64>, maps: Vec<RangeMap>) -> u64 {
-    seeds
-        .iter()
-        .map(|&seed| maps.iter().fold(seed, |acc, map| map.get_destination(acc)))
-        .min()
-        .unwrap()
-}
-
-// In the second part, the seeds are not just a list of numbers, but a list of ranges, given by pairs of start and length.
-// So seeds: 79 14 55 13 means that the seeds are 79-92 and 55-67.
-fn parse_ranges(input: &str) -> Vec<(u64, u64)> {
-    input
-        .split_whitespace()
-        .skip(1) // skip the "seeds:" part
-        .collect::<Vec<&str>>()
-        .chunks(2)
-        .map(|chunk| {
-            let start = chunk[0].parse::<u64>().unwrap();
-            let length = chunk[1].parse::<u64>().unwrap();
-            (start, start + length - 1)
-        })
-        .collect()
-}
-
-// The amount of seeds involved is too large to process them all, so we need to find a way to reduce the number of seeds.
-// Instead of processing all seeds, we only transform the boundaries of the seed ranges, then find the lowest location number among the transformed boundaries.
-fn process_with_boundaries(ranges: Vec<(u64, u64)>, mut maps: Vec<RangeMap>) -> u64 {
-    // Fill gaps in each map
-    for map in &mut maps {
-        map.fill_gaps();
-    }
-    let mut current_ranges = ranges;
-    for map in maps {
-        let mut next_ranges = Vec::new();
-
-        for range in current_ranges {
-            let adjusted_ranges = map.adjust_range(range);
-            for adjusted_range in adjusted_ranges {
-                let adjusted_start = map.get_destination(adjusted_range.0);
-                let adjusted_end = map.get_destination(adjusted_range.1);
-                next_ranges.push((adjusted_start, adjusted_end));
-            }
-        }
-
-        // remove duplicate ranges
-        next_ranges.sort();
-        next_ranges.dedup();
-
-        current_ranges = next_ranges;
-    }
-
-    // Find the minimum of between the start and end points of the final ranges
-    current_ranges
-        .into_iter()
-        .map(|range| range.0.min(range.1))
-        .min()
-        .unwrap()
-}
-
-#[derive(Debug, Clone)]
-struct Range {
-    source_range_start: u64,
-    destination_range_start: u64,
-    range_length: u64,
-}
-
-#[derive(Debug)]
-struct RangeMap {
-    mappings: Vec<Range>,
-}
-
-impl RangeMap {
-    fn new() -> Self {
-        RangeMap {
-            mappings: Vec::new(),
-        }
-    }
-
-    fn add_mapping(
-        &mut self,
-        source_range_start: u64,
-        destination_range_start: u64,
-        range_length: u64,
-    ) {
-        self.mappings.push(Range {
-            source_range_start,
-            destination_range_start,
-            range_length,
-        });
-    }
-
-    fn sort_mappings(&mut self) {
-        self.mappings.sort_by_key(|range| range.source_range_start);
-    }
-
-    fn get_destination(&self, source: u64) -> u64 {
-        let index = match self
-            .mappings
-            .binary_search_by_key(&source, |range| range.source_range_start)
-        {
-            Ok(index) => {
-                return self.mappings[index].destination_range_start
-                    + (source - self.mappings[index].source_range_start)
-            }
-            Err(index) => index,
-        };
-
-        if index == 0 {
-            return source; // Source is smaller than the first range start
-        }
-
-        let range = &self.mappings[index - 1];
-        if source < range.source_range_start + range.range_length {
-            return range.destination_range_start + (source - range.source_range_start);
-        }
-
-        source // Source is outside any defined range
-    }
-
-    // Method to fill gaps with zero-shift ranges
-    fn fill_gaps(&mut self) {
-        // Assuming the maps don't have overlapping ranges
-        // Add initial range if necessary
-        if let Some(first_range) = self.mappings.first() {
-            if first_range.source_range_start > 0 {
-                self.mappings.insert(
-                    0,
-                    Range {
-                        source_range_start: 0,
-                        destination_range_start: 0,
-                        range_length: first_range.source_range_start,
-                    },
-                );
-            }
-        }
-
-        // Fill gaps between existing ranges
-        let mut i = 0;
-        while i < self.mappings.len() - 1 {
-            let current_end = self.mappings[i].source_range_start + self.mappings[i].range_length;
-            let next_start = self.mappings[i + 1].source_range_start;
-
-            if current_end < next_start {
-                self.mappings.insert(
-                    i + 1,
-                    Range {
-                        source_range_start: current_end,
-                        destination_range_start: current_end,
-                        range_length: next_start - current_end,
-                    },
-                );
-            }
-
-            i += 1;
-        }
-
-        // Add final range if necessary
-        let last_range_end = self.mappings.last().unwrap().source_range_start
-            + self.mappings.last().unwrap().range_length;
-        self.mappings.push(Range {
-            source_range_start: last_range_end,
-            destination_range_start: last_range_end,
-            range_length: u64::MAX - last_range_end,
-        });
-    }
-
-    fn adjust_range(&self, input_range: (u64, u64)) -> Vec<(u64, u64)> {
-        let (input_start, input_end) = input_range;
-        let mut adjusted_ranges = Vec::new();
-
-        for range in &self.mappings {
-            let range_end = range.source_range_start + range.range_length - 1;
-
-            // Check for complete or partial overlap
-            if input_end >= range.source_range_start && input_start <= range_end {
-                let adjusted_start = input_start.max(range.source_range_start);
-                let adjusted_end = input_end.min(range_end);
-                adjusted_ranges.push((adjusted_start, adjusted_end));
-            }
-        }
-
-        if adjusted_ranges.is_empty() {
-            // If no overlap, the input range is retained as is
-            adjusted_ranges.push(input_range);
-        }
-
-        adjusted_ranges
-    }
 }
 
 #[cfg(test)]
