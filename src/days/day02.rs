@@ -44,28 +44,6 @@ fn sum_of_valid_games(input: &[&str]) -> u32 {
         .sum()
 }
 
-// fn is_play_valid(play: &str) -> bool {
-//     let mut red_cubes = 0;
-//     let mut green_cubes = 0;
-//     let mut blue_cubes = 0;
-
-//     for color in play.split(", ") {
-//         let mut parts = color.split(" ");
-//         let count = parts
-//             .next()
-//             .and_then(|c| c.parse::<u32>().ok())
-//             .unwrap_or(0);
-//         match parts.next() {
-//             Some("red") if count <= MAX_RED_CUBES => red_cubes += count, // ? what
-//             Some("green") if count <= MAX_GREEN_CUBES => green_cubes += count,
-//             Some("blue") if count <= MAX_BLUE_CUBES => blue_cubes += count,
-//             _ => return false,
-//         }
-//     }
-
-//     true
-// }
-
 fn is_play_valid(play: &str) -> bool {
     let mut red_cubes = 0;
     let mut green_cubes = 0;
