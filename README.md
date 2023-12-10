@@ -1,8 +1,30 @@
-# Advent of Code project template
-A Rust template for Advent of Code that I made to easily run any day or combination of days and measure the execution time.
+# aoc-2023-jmm
 
-Each day has a `solve()` function that returns a pair of `Solution`. The type `Solution` is an enum that can contain any integer or a string.
+This repository contains my solutions for the [Advent of Code 2023](https://adventofcode.com/2023) challenge, implemented in Rust. The project structure comes from [agubelu/AoC-rust-template](https://github.com/agubelu/AoC-rust-template/tree/master).
 
-You can create a `Solution` by specifying its type, for example `Solution::U32(value)`, or by using the From trait which is implemented for all supported types, for example, `Solution::from(value)`.
+## Running the Solutions
 
-To run: `cargo run --release [days...]`
+To run a solution, use the `cargo run` command followed by one or more day numbers
+
+```bash
+cargo run --release -- [days]
+```
+
+## Progress
+
+| Day | Part One           | Part Two           |
+| --- | ------------------ | ------------------ |
+| 1   | :heavy_check_mark: | :heavy_check_mark: |
+| 2   | :heavy_check_mark: | :heavy_check_mark: |
+| 3   | :heavy_check_mark: | :heavy_check_mark: |
+| 4   | :heavy_check_mark: | :heavy_check_mark: |
+| 5   | :heavy_check_mark: | :heavy_check_mark: |
+| 6   | :heavy_check_mark: | :heavy_check_mark: |
+| 7   | :heavy_check_mark: | :heavy_check_mark: |
+| 8   | :heavy_check_mark: | :heavy_check_mark: |
+| 9   | :heavy_check_mark: | :heavy_check_mark: |
+| 10  | :lock:             | :lock:             |
+
+- :heavy_check_mark: = Completed
+- :construction: = In progress but released
+- :lock: = Unreleased
