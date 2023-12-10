@@ -248,64 +248,25 @@ fn tiles_enclosed_by_loop(input: &[&str], start_type: TileType) -> u64 {
         for j in 0..grid.grid_width {
             // Check if the tile is a loop tile
             if loop_tiles.contains(&(i, j)) {
-                // print the original loop tile char
-                // print!("{}", input[i].chars().nth(j).unwrap());
-
-                // TODO: Simplify logic for counting vertical crossings
-                // Consider Vertical (NS); Horizontal (WE); and the set of bends: NorthEastBend (NE), SouthEastBend (SE), NorthWestBend (NW), and SouthWestBend (SW)).
-                // We read from left to right, incrementing on vertical crossings and finding the parity of tiles to determine if they are enclosed.
-                // Currently, we increment on NS, then we check each case of the pairs NW-SE, SW-NE, NW-NE, and SW-SE (plus any in between WE) to determine incrementing. However, we can simplify the logic by treating NW or NE like NS and just incrementing on them without any extra checks.
-                // The key observation is for vertical crossings is that all bends come in pairs since the loop is a simple closed curve. Thus:
-                //   - NE-SW or SE-NW adds 1 vertical crossing.
-                //   - NE-NW or SE-SW adds 0 vertical crossing.
-                // In the first case, we see NE or NW 1 time. In the second case we may see NE or NW 2 or 0 times, but that's just 0 mod 2 times.
-                // So we can simplify the logic:
-                //   - Count a vertical pipe (NS) as before.
-                //   - Count an NE or NW bend as a vertical crossing.
-                // This way, we don't need to keep track of the current bend and check if it's paired with the next bend.
-
                 // Check if it's a vertical crossing
                 // If it is, then increment the vertical crossings count
                 if let Some(tile) = grid.tiles.get(&(i, j)) {
+                    // Imagine drawing a line through the top quarter of the tile instead of the half
+                    // Then counting NE or NW bends is the same as counting vertical pipes as a vertical crossing.
                     match tile.tile_type {
-                        // If we see a vertical pipe, then we increment the vertical crossings count
-                        TileType::VerticalPipe => vertical_crossings += 1,
-                        // If we see an east bend, then we keep track of it as the current bend
-                        TileType::NorthEastBend | TileType::SouthEastBend => {
-                            current_bend = Some(&tile.tile_type);
+                        TileType::VerticalPipe
+                        | TileType::NorthEastBend
+                        | TileType::NorthWestBend => {
+                            vertical_crossings += 1;
                         }
-                        // If we see a horizontal pipe and there exists a current bend, then there could be a vertical crossing
-                        TileType::HorizontalPipe => {
-                            if current_bend.is_none() {
-                                current_bend = None;
-                            }
-                        }
-                        // Once we reach a west bend, we check if it's the paired bend to the current bend for a vertical crossing
-                        TileType::NorthWestBend | TileType::SouthWestBend => {
-                            if let Some(bend) = current_bend {
-                                if (bend == &TileType::NorthEastBend
-                                    && tile.tile_type == TileType::SouthWestBend)
-                                    || (bend == &TileType::SouthEastBend
-                                        && tile.tile_type == TileType::NorthWestBend)
-                                {
-                                    vertical_crossings += 1;
-                                }
-                            }
-                            current_bend = None;
-                        }
-                        _ => current_bend = None,
+                        _ => {}
                     }
                 }
             } else if vertical_crossings % 2 != 0 {
                 // If it's not a loop tile, and it has odd parity vertical crossing, then it's an enclosed tile
                 enclosed_tiles_count += 1;
-                // print!("I")
             }
-            // else {
-            //     print!("O")
-            // }
         }
-        // println!()
     }
 
     enclosed_tiles_count
