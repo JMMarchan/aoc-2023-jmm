@@ -97,6 +97,5 @@ mod tests {
         // 1. 5 10 13 16 21 30 45
         // so 5 is the extrapolated value
         assert_eq!(sum_of_extrapolated_values(&input, true), 2);
-        assert_eq!(sum_of_extrapolated_values(&input, true), 0);
     }
 }
