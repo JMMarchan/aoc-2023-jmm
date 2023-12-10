@@ -7,10 +7,14 @@ This repository contains my solutions for the [Advent of Code 2023](https://adve
 To run a solution, use the `cargo run` command followed by one or more day numbers
 
 ```bash
-cargo run --release -- [days]
+cargo run --release -- [days...]
 ```
 
 ## Progress
+
+- :heavy_check_mark: = Completed
+- :construction: = In progress but released
+- :lock: = Unreleased
 
 | Day | Part One           | Part Two           |
 | --- | ------------------ | ------------------ |
@@ -24,7 +28,3 @@ cargo run --release -- [days]
 | 8   | :heavy_check_mark: | :heavy_check_mark: |
 | 9   | :heavy_check_mark: | :heavy_check_mark: |
 | 10  | :lock:             | :lock:             |
-
-- :heavy_check_mark: = Completed
-- :construction: = In progress but released
-- :lock: = Unreleased
