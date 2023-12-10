@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use regex::Regex;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -25,16 +26,14 @@ const MAX_BLUE_CUBES: u32 = 14;
 // The "id" of a game is its number.
 // Get the sum of the ids of all valid games.
 fn sum_of_valid_games(input: &[&str]) -> u32 {
+    let re = Regex::new(r"Game (\d+): (.*)").unwrap();
+
     input
         .iter()
         .filter_map(|line| {
-            let mut parts = line.split(": ");
-            let id = parts
-                .next()?
-                .trim_start_matches("Game ")
-                .parse::<u32>()
-                .ok()?;
-            let plays = parts.next()?;
+            let cap = re.captures(line)?;
+            let id = cap[1].parse::<u32>().ok()?;
+            let plays = &cap[2];
             if plays.split("; ").all(|play| is_play_valid(play)) {
                 Some(id)
             } else {
@@ -44,21 +43,19 @@ fn sum_of_valid_games(input: &[&str]) -> u32 {
         .sum()
 }
 
+// A play is valid if it has at most 12 red cubes, 13 green cubes, and 14 blue cubes.
 fn is_play_valid(play: &str) -> bool {
+    let re = Regex::new(r"(\d+) (red|green|blue)").unwrap();
     let mut red_cubes = 0;
     let mut green_cubes = 0;
     let mut blue_cubes = 0;
 
-    for color in play.split(", ") {
-        let mut parts = color.split(" ");
-        let count = parts
-            .next()
-            .and_then(|c| c.parse::<u32>().ok())
-            .unwrap_or(0);
-        match parts.next() {
-            Some("red") if count <= MAX_RED_CUBES => red_cubes += count,
-            Some("green") if count <= MAX_GREEN_CUBES => green_cubes += count,
-            Some("blue") if count <= MAX_BLUE_CUBES => blue_cubes += count,
+    for cap in re.captures_iter(play) {
+        let count = cap[1].parse::<u32>().unwrap_or(0);
+        match &cap[2] {
+            "red" if count <= MAX_RED_CUBES => red_cubes += count,
+            "green" if count <= MAX_GREEN_CUBES => green_cubes += count,
+            "blue" if count <= MAX_BLUE_CUBES => blue_cubes += count,
             _ => return false,
         }
     }
@@ -71,6 +68,8 @@ fn is_play_valid(play: &str) -> bool {
 // The power of a game is the product of the minimum number of cubes for each game.
 // Get the sum of the powers of all games.
 fn sum_of_games_power(input: &[&str]) -> u32 {
+    let re = Regex::new(r"(\d+) (red|green|blue)").unwrap();
+
     input
         .iter()
         .map(|line| {
@@ -79,16 +78,12 @@ fn sum_of_games_power(input: &[&str]) -> u32 {
 
             for play in plays.split("; ") {
                 let (mut red_cubes, mut green_cubes, mut blue_cubes) = (0, 0, 0);
-                for color in play.split(", ") {
-                    let mut parts = color.split(" ");
-                    let count = parts
-                        .next()
-                        .and_then(|c| c.parse::<u32>().ok())
-                        .unwrap_or(0);
-                    match parts.next() {
-                        Some("red") => red_cubes = count.max(red_cubes),
-                        Some("green") => green_cubes = count.max(green_cubes),
-                        Some("blue") => blue_cubes = count.max(blue_cubes),
+                for cap in re.captures_iter(play) {
+                    let count = cap[1].parse::<u32>().unwrap_or(0);
+                    match &cap[2] {
+                        "red" => red_cubes = count.max(red_cubes),
+                        "green" => green_cubes = count.max(green_cubes),
+                        "blue" => blue_cubes = count.max(blue_cubes),
                         _ => (),
                     }
                 }
