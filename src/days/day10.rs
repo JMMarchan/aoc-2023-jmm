@@ -9,7 +9,7 @@ pub fn solve() -> SolutionPair {
     // The starting position is a north-west bend in the puzzle input
     let input = read_to_string("input/day10.txt").expect("Day 10 input file should be present.");
     let input: Vec<&str> = input.lines().collect();
-    let sol1: u64 = farthest_distance_in_loop(&input, TileType::NorthWestBend);
+    let sol1: u64 = farthest_distance_in_loop(&input, TileType::NorthWestBend); // TODO: This should be more general instead of a hardcoded start type
     let sol2: u64 = tiles_enclosed_by_loop(&input, TileType::NorthWestBend);
 
     (Solution::from(sol1), Solution::from(sol2))
@@ -29,12 +29,6 @@ enum TileType {
     SouthWestBend,
     SouthEastBend,
     Ground,
-}
-
-impl Tile {
-    fn new(tile_type: TileType) -> Self {
-        Self { tile_type }
-    }
 }
 
 impl TileType {
@@ -243,7 +237,6 @@ fn tiles_enclosed_by_loop(input: &[&str], start_type: TileType) -> u64 {
     // An enclosed tile is a non-loop tile that has an odd number of vertical crossings
     for i in 0..grid.grid_height {
         let mut vertical_crossings = 0;
-        let mut current_bend: Option<&TileType> = None;
 
         for j in 0..grid.grid_width {
             // Check if the tile is a loop tile
@@ -312,6 +305,7 @@ L7JLJL-JLJLJL--JLJ.L\n\
     fn test_tiles_enclosed_by_loop() {
         let input1 = day10_test_input();
         let input1: Vec<&str> = input1.lines().collect();
+        assert_eq!(tiles_enclosed_by_loop(&input1, TileType::SouthEastBend), 1);
         let input2 = day10_test_input_2();
         let input2: Vec<&str> = input2.lines().collect();
         // assert_eq!(tiles_enclosed_by_loop(&input1, TileType::SouthEastBend), 1);
