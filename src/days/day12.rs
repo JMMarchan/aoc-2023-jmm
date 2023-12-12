@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
 use hashbrown::HashMap;
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -21,12 +22,12 @@ pub fn solve() -> SolutionPair {
 // There are four possible ways to arrange these groups based on the unknown springs.
 // Find the sum of the number of ways to arrange the groups for each line of input.
 fn sum_of_arrangements(input: &[&str]) -> u64 {
-    input.iter().map(|line| spring_arrangements(line)).sum()
+    input.par_iter().map(|line| spring_arrangements(line)).sum()
 }
 
 fn sum_of_folded_arrangements(input: &[&str]) -> u64 {
     input
-        .iter()
+        .par_iter()
         .map(|line| folded_spring_arrangements(line))
         .sum()
 }
