@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use regex::Regex;
 use std::fs::read_to_string;
 
@@ -17,7 +18,7 @@ pub fn solve() -> SolutionPair {
 fn concatenate_and_sum(input: &[&str]) -> u32 {
     let re = Regex::new(r"\d").unwrap();
     input
-        .iter()
+        .par_iter()
         .filter_map(|line| {
             let matches: Vec<_> = re.find_iter(line).collect();
             let first_digit = matches.first()?;
@@ -37,7 +38,7 @@ fn concatenate_and_sum(input: &[&str]) -> u32 {
 // A find and replace won't work, consider eighthree, which would become 8hree.
 fn parse_concat_sum(input: &[&str]) -> u32 {
     input
-        .iter()
+        .par_iter()
         .filter_map(|line| {
             let first_digit = find_digit(line, false).unwrap();
             let last_digit = find_digit(line, true).unwrap();

@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +28,7 @@ impl Schematic {
 
     fn part_numbers(&self) -> Vec<u32> {
         self.grid
-            .iter()
+            .par_iter()
             .enumerate()
             .flat_map(|(i, row)| self.process_row(i, row))
             .collect()
@@ -45,7 +46,11 @@ impl Schematic {
                 let end = j;
 
                 if self.is_valid_part_number(row_idx, start, end) {
-                    if let Ok(number) = row[start..end].iter().collect::<String>().parse::<u32>() {
+                    if let Ok(number) = row[start..end]
+                        .par_iter()
+                        .collect::<String>()
+                        .parse::<u32>()
+                    {
                         result.push(number);
                     }
                 }
@@ -160,7 +165,7 @@ impl Schematic {
             .map_or(self.cols, |p| col + p);
 
         self.grid[row][start..end]
-            .iter()
+            .par_iter()
             .collect::<String>()
             .parse::<u32>()
             .ok()
@@ -181,12 +186,12 @@ impl Schematic {
 // Then we can sum the part numbers.
 fn sum_of_part_numbers(input: &[&str]) -> u32 {
     let grid = input
-        .iter()
+        .par_iter()
         .map(|line| line.chars().collect::<Vec<char>>())
         .collect::<Vec<Vec<char>>>();
     let schematic = Schematic::new(grid);
     let part_numbers = schematic.part_numbers();
-    part_numbers.iter().sum::<u32>()
+    part_numbers.par_iter().sum::<u32>()
 }
 
 // This time, a gear is an asterisk symbol "*" which is next to exactly two part numbers.
@@ -194,10 +199,10 @@ fn sum_of_part_numbers(input: &[&str]) -> u32 {
 // Find the sum of all gear ratios.
 fn sum_of_gear_ratios(input: &[&str]) -> u32 {
     let grid = input
-        .iter()
+        .par_iter()
         .map(|line| line.chars().collect::<Vec<char>>())
         .collect::<Vec<Vec<char>>>();
     let schematic = Schematic::new(grid);
     let gear_ratios = schematic.gear_ratios();
-    gear_ratios.iter().sum::<u32>()
+    gear_ratios.par_iter().sum::<u32>()
 }

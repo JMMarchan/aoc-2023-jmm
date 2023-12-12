@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use regex::Regex;
 use std::fs::read_to_string;
 
@@ -29,7 +30,7 @@ fn sum_of_valid_games(input: &[&str]) -> u32 {
     let re = Regex::new(r"Game (\d+): (.*)").unwrap();
 
     input
-        .iter()
+        .par_iter()
         .filter_map(|line| {
             let cap = re.captures(line)?;
             let id = cap[1].parse::<u32>().ok()?;
@@ -71,7 +72,7 @@ fn sum_of_games_power(input: &[&str]) -> u32 {
     let re = Regex::new(r"(\d+) (red|green|blue)").unwrap();
 
     input
-        .iter()
+        .par_iter()
         .map(|line| {
             let plays = line.split(": ").nth(1).unwrap_or("");
             let (mut max_red, mut max_green, mut max_blue) = (0, 0, 0);

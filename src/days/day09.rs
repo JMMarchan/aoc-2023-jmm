@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -21,7 +22,7 @@ pub fn solve() -> SolutionPair {
 // In the second part, we extrapolate backward instead, getting the value before the first number in the sequence.
 fn sum_of_extrapolated_values(input: &[&str], backward: bool) -> i64 {
     input
-        .iter()
+        .par_iter()
         .map(|line| {
             let mut numbers = line
                 .split_whitespace()
@@ -39,7 +40,7 @@ fn sum_of_extrapolated_values(input: &[&str], backward: bool) -> i64 {
 fn extrapolate_next(numbers: &[i64]) -> i64 {
     let diffs: Vec<i64> = numbers.windows(2).map(|pair| pair[1] - pair[0]).collect();
 
-    if diffs.iter().all(|&x| x == 0) {
+    if diffs.par_iter().all(|&x| x == 0) {
         *numbers.last().unwrap()
     } else {
         numbers.last().unwrap() + extrapolate_next(&diffs)

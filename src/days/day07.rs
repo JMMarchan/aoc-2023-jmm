@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -19,14 +20,14 @@ pub fn solve() -> SolutionPair {
 // In the second part, J instead of being a jack is a joker, which can be any card for the purposes of determining hand type but is always treated as less than any other card
 fn poker_total_winnings(input: &[&str], joker: bool) -> u64 {
     let mut hands_with_bids = input
-        .iter()
+        .par_iter()
         .map(|line| parse_hand_and_bid(line, joker))
         .collect::<Vec<_>>();
 
     hands_with_bids.sort_by(|(a_hand, _), (b_hand, _)| compare_hands(a_hand, b_hand));
 
     hands_with_bids
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(rank, (_hand, bid))| (rank as u64 + 1) * bid)
         .sum()

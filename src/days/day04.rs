@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -50,7 +51,7 @@ fn count_matches(line: &str) -> u32 {
         .collect::<Vec<u32>>();
     // The number of matches is the number of player numbers that are also in the winning numbers.
     player_numbers
-        .iter()
+        .par_iter()
         .filter(|&player_number| winning_numbers.contains(player_number))
         .count() as u32
 }
@@ -59,10 +60,10 @@ fn count_matches(line: &str) -> u32 {
 // Specifically, you win copies of the scratchcards below the winning card equal to the number of its winning numbers.
 fn total_scratchcards(input: &[&str]) -> u32 {
     let cards: Vec<_> = input
-        .iter()
+        .par_iter()
         .map(|line| count_matches(line))
         .collect::<Vec<u32>>();
-    let mut queue: std::collections::VecDeque<_> = cards.iter().enumerate().collect();
+    let mut queue: std::collections::VecDeque<_> = cards.par_iter().enumerate().collect();
     let mut total_cards = cards.len() as u32;
 
     while let Some((index, &matches)) = queue.pop_front() {

@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
 use hashbrown::HashSet;
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -18,23 +19,26 @@ pub fn solve() -> SolutionPair {
 // However, some space expands. In particular, a row of empty space counts as n rows of empty space, and a column of empty space counts as n columns of empty space.
 // In the first part, n is 2. In the second part, n is 1,000,000.
 fn sum_pairwise_space_distances(input: &[&str], expansion_factor: u64) -> u64 {
-    let grid: Vec<Vec<char>> = input.iter().map(|line| line.chars().collect()).collect();
+    let grid: Vec<Vec<char>> = input
+        .par_iter()
+        .map(|line| line.chars().collect())
+        .collect();
     let mut sum = 0;
 
     // Count expanded rows and columns
     let expanded_rows: HashSet<usize> = (0..grid.len())
-        .filter(|&i| grid[i].iter().all(|&c| c == '.'))
+        .filter(|&i| grid[i].par_iter().all(|&c| c == '.'))
         .collect();
     let expanded_columns: HashSet<usize> = (0..grid[0].len())
-        .filter(|&i| grid.iter().all(|row| row[i] == '.'))
+        .filter(|&i| grid.par_iter().all(|row| row[i] == '.'))
         .collect();
 
     // Collect galaxy coordinates
     let galaxy_coords: Vec<(usize, usize)> = grid
-        .iter()
+        .par_iter()
         .enumerate()
         .flat_map(|(i, row)| {
-            row.iter().enumerate().filter_map(
+            row.par_iter().enumerate().filter_map(
                 move |(j, &col)| {
                     if col == '#' {
                         Some((i, j))
