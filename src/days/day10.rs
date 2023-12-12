@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
-use std::collections::{HashMap, HashSet, VecDeque};
+use hashbrown::{HashMap, HashSet};
+use std::collections::VecDeque;
 use std::fs::read_to_string;
 use std::rc::Rc;
 

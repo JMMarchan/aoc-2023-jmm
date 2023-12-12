@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
-use std::{collections::HashMap, fs::read_to_string};
+use hashbrown::HashMap;
+use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -55,8 +56,7 @@ fn folded_spring_arrangements(line: &str) -> u64 {
         folded_groups.extend(groups.iter().cloned());
     }
 
-    let arrangements =
-        calculate_arrangements(&folded_springs.chars().collect::<Vec<_>>(), &folded_groups);
+    let arrangements = calculate_arrangements(&folded_springs.as_bytes(), &folded_groups);
 
     // print folded
     // println!("{} {:?}: {}", folded_springs, folded_groups, arrangements);
@@ -73,14 +73,14 @@ fn spring_arrangements(line: &str) -> u64 {
         .map(|s| s.parse().unwrap())
         .collect();
 
-    let arrangements = calculate_arrangements(&springs.chars().collect::<Vec<_>>(), &groups);
+    let arrangements = calculate_arrangements(&springs.as_bytes(), &groups);
 
     // println!("{}: {}", line, arrangements);
 
     arrangements as u64
 }
 
-fn calculate_arrangements(springs: &[char], groups: &[usize]) -> usize {
+fn calculate_arrangements(springs: &[u8], groups: &[usize]) -> usize {
     // Use dynamic programming to calculate the number of arrangements.
     let mut memo: HashMap<(usize, usize, usize), usize> = HashMap::new();
 
@@ -88,7 +88,7 @@ fn calculate_arrangements(springs: &[char], groups: &[usize]) -> usize {
     // However, index of spring and group is not enough
     // We also need to keep track of the length of the current group so that we can check if it matches the expected length.
     fn dp(
-        springs: &[char],
+        springs: &[u8],
         groups: &[usize],
         spring_index: usize,
         group_index: usize,
@@ -122,21 +122,21 @@ fn calculate_arrangements(springs: &[char], groups: &[usize]) -> usize {
 
         // Case 1: The current spring is operational with no current group
         // So place the current spring, and move on to the next spring.
-        if (current_spring == '.' || current_spring == '?') && group_length == 0 {
+        if (current_spring == b'.' || current_spring == b'?') && group_length == 0 {
             arrangements += dp(springs, groups, spring_index + 1, group_index, 0, memo);
         }
 
         // Case 2: The current spring is operational, and we have a current group
         // Check that there are more groups to place, and that the group is the expected length
         // Then we can move on to the next spring and the next group.
-        if (current_spring == '.' || current_spring == '?') && group_length > 0 {
+        if (current_spring == b'.' || current_spring == b'?') && group_length > 0 {
             if group_index < groups.len() && group_length == groups[group_index] {
                 arrangements += dp(springs, groups, spring_index + 1, group_index + 1, 0, memo);
             }
         }
 
         // Case 3: Suppose the current spring is broken, so it must be part of a group.
-        if current_spring == '#' || current_spring == '?' {
+        if current_spring == b'#' || current_spring == b'?' {
             arrangements += dp(
                 springs,
                 groups,

@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
-use std::{collections::HashSet, fs::read_to_string};
+use hashbrown::HashSet;
+use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
 
