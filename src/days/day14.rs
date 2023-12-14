@@ -1,5 +1,6 @@
 use crate::{Solution, SolutionPair};
 use hashbrown::HashMap;
+use rayon::prelude::*;
 use std::fs::read_to_string;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -8,72 +9,18 @@ pub fn solve() -> SolutionPair {
     let input = read_to_string("input/day14.txt").expect("Day 14 input file should be present");
     let lines: Vec<&str> = input.lines().collect();
     // print height and width of grid
-    let height = lines.len();
-    let width = lines[0].len();
-    println!("Height: {}, Width: {}", height, width);
-    let sol1: u64 = total_load(&lines);
+    // let height = lines.len();
+    // let width = lines[0].len();
+    // println!("Height: {}, Width: {}", height, width);
+    let sol1: u64 = total_load_col(&lines);
     let sol2: u64 = total_load_cycles(&lines, 1_000_000_000);
 
     (Solution::from(sol1), Solution::from(sol2))
 }
 
-// Input is a 2d grid of round rocks (O), cube rocks (#), and spaces (.)
-// You can tilt the grid in four directions (up, down, left, right)
-// When you tilt the grid, the rounded rocks roll in that direction until they hit a edge of the grid or another rock.
-// The load of a rock is the number of rows including itself to the south edge of the grid
-// So a rock on the bottom row has a load of 1, a rock on the second to last row has a load of 2, etc.
-// Tilt the platform so that all the rounded rocks roll north.
-// Find the sum of the loads of all the rounded rocks.
-fn total_load(input: &[&str]) -> u64 {
-    let mut chars: Vec<Vec<char>> = input.iter().map(|line| line.chars().collect()).collect();
-
-    rotate_ccw_and_roll_left(&mut chars);
-
-    let mut total_load = 0;
-    // Now the load of each row is the number of rows to the east edge of the grid including itself since we rotated ccw
-    // This is just the length of the row - the index of each O
-    for row in chars.iter() {
-        for (i, c) in row.iter().enumerate() {
-            if *c == 'O' {
-                total_load += row.len() - i;
-            }
-        }
-    }
-
-    total_load as u64
-}
-
-// This function calculates a hash for the grid
-fn hash_grid(chars: &Vec<Vec<char>>) -> u64 {
-    // let mut hash = 0;
-    // for (i, row) in chars.iter().enumerate() {
-    //     for (j, &c) in row.iter().enumerate() {
-    //         if c == 'O' {
-    //             hash ^= 1 << (i * chars.len() + j);
-    //         }
-    //     }
-    // }
-    // hash
-    // ! THIS WAS WRONG and lead to my main time sink, didn't even realize it for a while, 100x100 grid, so 10000 bits, but u64 is only 64 bits, so it was truncating the hash, resulting in overflows
-    let mut hash: u64 = 0;
-    for (i, row) in chars.iter().enumerate() {
-        for (j, &c) in row.iter().enumerate() {
-            if c == 'O' {
-                // Using a hash function that avoids overflow
-                hash =
-                    hash.wrapping_add(((i * chars[0].len() + j) as u64).wrapping_mul(2654435761));
-            }
-        }
-    }
-    hash
-}
-
-// Exactly as expected, we have to do multiple cycles of rotating
-// unfortunately, it's 1000000000 cycles, so maybe brute force won't work, but roll north only took 1ms, so that would be 1000 seconds = 16 minutes. Not great, but not terrible.
-// also unfortunately, the order is North, West, South, East, so i have the opposite order of what I need
-// Apparently, there is a cycle here. See if there is a grid of rocks that we've seen after n cycles, then modulo the number of cycles by the length of the cycle
+// The solution has been refactored in general to use a vector of columns instead of rows
 fn total_load_cycles(input: &[&str], total_cycles: u64) -> u64 {
-    let mut chars: Vec<Vec<char>> = input.iter().map(|line| line.chars().collect()).collect();
+    let mut chars_col: Vec<Vec<char>> = rows_to_cols(input);
 
     // let's hash the grid and see if we've seen it before.
     // If so, find 1000000000 % cycle_length and do that many cycles
@@ -84,22 +31,20 @@ fn total_load_cycles(input: &[&str], total_cycles: u64) -> u64 {
 
     let mut cycle_length = None;
     for i in 0..total_cycles {
-        let hash = hash_grid(&chars);
+        let hash = hash_grid_col(&chars_col);
         if let Some(&occurence) = seen.get(&hash) {
+            // This is basically Floyd's cycle detection algorithm
             first_occurrence = occurence;
             cycle_length = Some(i - first_occurrence);
-            println!("Cycle length: {}", cycle_length.unwrap());
-            println!(
-                "First occurence index: {}, Current index: {}",
-                first_occurrence, i
-            );
+            // println!("Cycle length: {}", cycle_length.unwrap());
+            // println!(
+            //     "First occurence index: {}, Current index: {}",
+            //     first_occurrence, i
+            // );
             break;
         }
         seen.insert(hash, i);
-        roll_north(&mut chars);
-        roll_west(&mut chars);
-        roll_south(&mut chars);
-        roll_east(&mut chars);
+        roll_cycle_col(&mut chars_col);
     }
 
     // First occurrence: 102, Current: 112 (10 cycles)
@@ -114,29 +59,80 @@ fn total_load_cycles(input: &[&str], total_cycles: u64) -> u64 {
     // Calculate the remaining cycles after the last complete cycle
     let remaining_cycles = remaining_steps % cycle_length;
 
-    let final_index = first_occurrence + remaining_cycles;
-    println!("Final index: {}", final_index);
-    // So it should be the grid at index 110
+    // let final_index = first_occurrence + remaining_cycles;
+    // println!("Final index: {}", final_index);
+    // So it should be the grid at index 118
 
     // Perform the transformations for the remaining cycles
     for _ in 0..remaining_cycles {
-        roll_north(&mut chars);
-        roll_west(&mut chars);
-        roll_south(&mut chars);
-        roll_east(&mut chars);
+        roll_cycle_col(&mut chars_col);
     }
 
-    calculate_total_load(&mut chars)
+    calculate_total_load_col(chars_col)
 }
 
-fn calculate_total_load(chars: &mut Vec<Vec<char>>) -> u64 {
-    rotate_grid_ccw(chars);
+fn hash_grid_col(chars_col: &Vec<Vec<char>>) -> u64 {
+    // ! THIS WAS WRONG and lead to my main time sink, didn't even realize it for a while, 100x100 grid, so 10000 bits, but u64 is only 64 bits, so it was truncating the hash, resulting in overflows. I'm keeping this here as a reminder to be careful with bit operations
+    // ! This is based on my old row hashing function, but it's not quite right, since we're hashing columns now, but I'm still keeping it here.
+    // let mut hash = 0;
+    // for (i, row) in chars.iter().enumerate() {
+    //     for (j, &c) in row.iter().enumerate() {
+    //         if c == 'O' {
+    //             hash ^= 1 << (i * chars.len() + j);
+    //         }
+    //     }
+    // }
+    // hash
+    let mut hash: u64 = 0;
+    for (i, col) in chars_col.iter().enumerate() {
+        for (j, &c) in col.iter().enumerate() {
+            if c == 'O' {
+                // Using a hash function that avoids overflow
+                hash = hash
+                    .wrapping_add(((i * chars_col[0].len() + j) as u64).wrapping_mul(2654435761));
+            }
+        }
+    }
+    hash
+}
 
+// rows_to_cols takes in a slice of strings representing rows and returns a vector of columns
+fn rows_to_cols(input: &[&str]) -> Vec<Vec<char>> {
+    // Determine the number of columns
+    let num_columns = input.first().map_or(0, |line| line.len());
+
+    // Initialize a vector of columns
+    let mut chars_col: Vec<Vec<char>> = vec![Vec::new(); num_columns];
+
+    // Fill each column with characters from the input
+    for line in input.iter() {
+        for (col, char) in line.chars().enumerate() {
+            chars_col[col].push(char);
+        }
+    }
+
+    chars_col
+}
+
+// Input is a 2d grid of round rocks (O), cube rocks (#), and spaces (.)
+// You can tilt the grid in four directions (up, down, left, right)
+// When you tilt the grid, the rounded rocks roll in that direction until they hit a edge of the grid or another rock.
+// The load of a rock is the number of rows including itself to the south edge of the grid
+// So a rock on the bottom row has a load of 1, a rock on the second to last row has a load of 2, etc.
+// Tilt the platform so that all the rounded rocks roll north.
+// Find the sum of the loads of all the rounded rocks.
+fn total_load_col(input: &[&str]) -> u64 {
+    let mut chars_col: Vec<Vec<char>> = rows_to_cols(input);
+    roll_north_col(&mut chars_col);
+    calculate_total_load_col(chars_col)
+}
+
+fn calculate_total_load_col(chars_col: Vec<Vec<char>>) -> u64 {
     let mut total_load = 0;
-    for row in chars.iter() {
-        for (i, c) in row.iter().enumerate() {
+    for col in chars_col.iter() {
+        for (i, c) in col.iter().enumerate() {
             if *c == 'O' {
-                total_load += row.len() - i;
+                total_load += col.len() - i;
             }
         }
     }
@@ -144,78 +140,19 @@ fn calculate_total_load(chars: &mut Vec<Vec<char>>) -> u64 {
     total_load as u64
 }
 
-fn roll_north(chars: &mut Vec<Vec<char>>) {
-    // rotate grid ccw then roll left then put grid back.
-    rotate_grid_ccw(chars);
-    roll_west(chars);
-    rotate_grid_cw(chars);
-}
-
-fn roll_south(chars: &mut Vec<Vec<char>>) {
-    // rotate grid cw then roll left then put grid back.
-    rotate_grid_cw(chars);
-    roll_west(chars);
-    rotate_grid_ccw(chars);
-}
-
-fn roll_east(chars: &mut Vec<Vec<char>>) {
-    // rotate grid ccw twice then roll left then put grid back.
-    rotate_grid_ccw(chars);
-    rotate_grid_ccw(chars);
-    roll_west(chars);
-    rotate_grid_cw(chars);
-    rotate_grid_cw(chars);
-}
-
-// this will certainly have to be generalized to handle all four directions but I'm starting with north
-
-fn rotate_ccw_and_roll_left(chars: &mut Vec<Vec<char>>) {
-    // rotate grid ccw then roll left
-    rotate_grid_ccw(chars);
-    roll_west(chars);
-}
-
-// It is a square (100x100 for input), so rotation is easy
-fn rotate_grid_ccw(chars: &mut Vec<Vec<char>>) {
-    let n = chars.len();
-    for i in 0..n / 2 {
-        for j in i..n - i - 1 {
-            // Store current cell in temp variable
-            let temp = chars[i][j];
-            // Move values from right to top
-            chars[i][j] = chars[j][n - 1 - i];
-            // Move values from bottom to right
-            chars[j][n - 1 - i] = chars[n - 1 - i][n - 1 - j];
-            // Move values from left to bottom
-            chars[n - 1 - i][n - 1 - j] = chars[n - 1 - j][i];
-            // Assign temp to left
-            chars[n - 1 - j][i] = temp;
-        }
-    }
-} // fn rotate_grid_ccw
-
-fn rotate_grid_cw(chars: &mut Vec<Vec<char>>) {
-    let n = chars.len();
-    for i in 0..n / 2 {
-        for j in i..n - i - 1 {
-            // Store current cell in temp variable
-            let temp = chars[i][j];
-            // Move values from left to top
-            chars[i][j] = chars[n - 1 - j][i];
-            // Move values from bottom to left
-            chars[n - 1 - j][i] = chars[n - 1 - i][n - 1 - j];
-            // Move values from right to bottom
-            chars[n - 1 - i][n - 1 - j] = chars[j][n - 1 - i];
-            // Assign temp to right
-            chars[j][n - 1 - i] = temp;
-        }
+// Perform a north, west, south, east roll cycle on the grid
+fn roll_cycle_col(chars_col: &mut Vec<Vec<char>>) {
+    for _ in 0..4 {
+        roll_north_col(chars_col);
+        rotate_grid_cw_col(chars_col);
     }
 }
 
-fn roll_west(chars: &mut Vec<Vec<char>>) {
-    for row in chars.iter_mut() {
-        // Split the row by '#', process each group, and collect the results
-        let processed: Vec<Vec<char>> = row
+// For each column, move the rocks 'O' up to the next # or the top of the grid
+fn roll_north_col(chars_col: &mut Vec<Vec<char>>) {
+    chars_col.par_iter_mut().for_each(|col| {
+        // Split the column by '#', process each group, and collect the results
+        let processed: Vec<Vec<char>> = col
             .split(|&c| c == '#')
             .map(|group| {
                 let mut result: Vec<char> = group.iter().filter(|&&c| c == 'O').cloned().collect();
@@ -225,7 +162,7 @@ fn roll_west(chars: &mut Vec<Vec<char>>) {
             .collect();
 
         // Flatten the processed groups and interleave '#'s
-        *row = processed
+        *col = processed
             .into_iter()
             .flat_map(|mut group| {
                 group.push('#');
@@ -234,12 +171,23 @@ fn roll_west(chars: &mut Vec<Vec<char>>) {
             .collect();
 
         // Remove the extra '#' added at the end
-        row.pop();
-    }
+        col.pop();
+    });
 }
 
-fn _function2(input: &[&str]) -> u64 {
-    0
+// This takes in a vector of columns, rotating the characters in the grid clockwise
+fn rotate_grid_cw_col(chars: &mut Vec<Vec<char>>) {
+    let n = chars.len();
+    let m = chars[0].len();
+    let mut new_grid = vec![vec!['.'; n]; m];
+
+    for i in 0..n {
+        for j in 0..m {
+            new_grid[m - 1 - j][i] = chars[i][j];
+        }
+    }
+
+    *chars = new_grid;
 }
 
 #[cfg(test)]
@@ -286,74 +234,46 @@ O.#..O.#.#
     }
 
     #[test]
-    fn test_multiple_cycles() {
+    fn test_rotate_grid_cw_col() {
+        let input = r#"#.
+O."#;
+        let mut chars: Vec<Vec<char>> = rows_to_cols(&input.lines().collect::<Vec<&str>>());
+        let expected = r#"O#
+.."#;
+        let expected: Vec<Vec<char>> = rows_to_cols(&expected.lines().collect::<Vec<&str>>());
+        rotate_grid_cw_col(&mut chars);
+
+        assert_eq!(chars, expected);
+    }
+
+    #[test]
+    fn test_roll_north_col() {
+        let input = r#"#.
+O.
+.O
+OO"#;
+        let expected = r#"#O
+OO
+O.
+.."#;
+        let mut chars: Vec<Vec<char>> = rows_to_cols(&input.lines().collect::<Vec<&str>>());
+        let expected = rows_to_cols(&expected.lines().collect::<Vec<&str>>());
+        roll_north_col(&mut chars);
+        assert_eq!(chars, expected);
+    }
+
+    #[test]
+    fn test_multiple_cycles_col() {
         let input = test_input();
         let expected = test_expected_after_1_cycle();
-        let mut chars: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-        roll_north(&mut chars);
-        roll_west(&mut chars);
-        roll_south(&mut chars);
-        roll_east(&mut chars);
-        assert_eq!(
-            chars,
-            expected
-                .lines()
-                .map(|line| line.chars().collect::<Vec<char>>())
-                .collect::<Vec<Vec<char>>>()
-        );
+        let mut chars: Vec<Vec<char>> = rows_to_cols(&input.lines().collect::<Vec<&str>>());
+        let expected_cols = rows_to_cols(&expected.lines().collect::<Vec<&str>>());
+        roll_cycle_col(&mut chars);
+        assert_eq!(chars, expected_cols);
 
         let expected = test_expected_after_2_cycles();
-        roll_north(&mut chars);
-        roll_west(&mut chars);
-        roll_south(&mut chars);
-        roll_east(&mut chars);
-        assert_eq!(
-            chars,
-            expected
-                .lines()
-                .map(|line| line.chars().collect::<Vec<char>>())
-                .collect::<Vec<Vec<char>>>()
-        );
-    }
-
-    #[test]
-    fn test_roll_left() {
-        let input = ".O.#.OO.#.";
-        let expected = "O..#OO..#.";
-        let mut chars: Vec<Vec<char>> = vec![input.chars().collect()];
-        roll_west(&mut chars);
-        assert_eq!(chars[0], expected.chars().collect::<Vec<char>>());
-    }
-
-    #[test]
-    fn test_total_load() {
-        let input = test_input();
-        let input: Vec<&str> = input.lines().collect();
-        assert_eq!(total_load(&input), 136);
-    }
-
-    #[test]
-    fn test_rotate_grid() {
-        let input = r#".#
-##"#;
-        let mut chars: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-        rotate_grid_ccw(&mut chars);
-        let expected = r#"##
-.#"#;
-        let expected: Vec<Vec<char>> = expected
-            .lines()
-            .map(|line| line.chars().collect())
-            .collect();
-        assert_eq!(chars, expected);
-
-        rotate_grid_cw(&mut chars);
-
-        let expected = r#".#
-##"#;
-        let expected: Vec<Vec<char>> = expected
-            .lines()
-            .map(|line| line.chars().collect())
-            .collect();
-        assert_eq!(chars, expected);
+        let expected_cols = rows_to_cols(&expected.lines().collect::<Vec<&str>>());
+        roll_cycle_col(&mut chars);
+        assert_eq!(chars, expected_cols);
     }
 }
