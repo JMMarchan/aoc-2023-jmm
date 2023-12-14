@@ -28,10 +28,10 @@ cargo run --release -- [days...]
 | 8   | :star:   | :star:   |
 | 9   | :star:   | :star:   |
 | 10  | :star:   | :star:   |
-| 11  | :lock:   | :lock:   |
-| 12  | :lock:   | :lock:   |
-| 13  | :lock:   | :lock:   |
-| 14  | :lock:   | :lock:   |
+| 11  | :star:   | :star:   |
+| 12  | :star:   | :star:   |
+| 13  | :star:   | :star:   |
+| 14  | :star:   | :star:   |
 | 15  | :lock:   | :lock:   |
 | 16  | :lock:   | :lock:   |
 | 17  | :lock:   | :lock:   |
@@ -43,3 +43,13 @@ cargo run --release -- [days...]
 | 23  | :lock:   | :lock:   |
 | 24  | :lock:   | :lock:   |
 | 25  | :lock:   | :lock:   |
+
+## Refactoring
+
+- [ ] General code cleanup/optimization
+- [ ] Use grid crate for all the 2D grid problems:
+  - [ ] Day 3: Gear Ratios
+  - [ ] Day 10: Pipe Maze
+  - [ ] Day 11: Cosmic Expansion
+  - [ ] Day 13: Point of Incidence
+  - [ ] Day 14: Parabolic Reflector Dish
