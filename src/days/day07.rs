@@ -1,4 +1,5 @@
 use crate::{Solution, SolutionPair};
+use itertools::Itertools;
 use rayon::prelude::*;
 use std::fs::read_to_string;
 
@@ -25,6 +26,11 @@ fn poker_total_winnings(input: &[&str], joker: bool) -> u64 {
         .collect::<Vec<_>>();
 
     hands_with_bids.sort_by(|(a_hand, _), (b_hand, _)| compare_hands(a_hand, b_hand));
+
+    // print out the hands in order
+    // for (rank, (hand, bid)) in hands_with_bids.iter().enumerate() {
+    //     println!("{}: {:?} {}", rank + 1, hand, bid);
+    // }
 
     hands_with_bids
         .par_iter()
@@ -71,31 +77,22 @@ fn parse_hand_and_bid(input: &str, joker: bool) -> (Hand, u64) {
 }
 
 fn determine_hand_type_with_joker(cards: &[CardValue]) -> HandType {
-    let mut counts = std::collections::HashMap::new();
-    let mut joker_count = 0;
+    let card_counts = cards.into_iter().counts();
+    let joker_count = card_counts.get(&CardValue::Joker).unwrap_or(&0);
 
-    for &card in cards {
-        if card == CardValue::Joker {
-            joker_count += 1;
-        } else {
-            *counts.entry(card).or_insert(0) += 1;
-        }
-    }
-
-    // If all cards are jokers
-    if joker_count == cards.len() {
+    if joker_count == &cards.len() {
         return HandType::FiveOfAKind;
     }
 
-    // Find the most common card (excluding jokers)
-    let most_common_card = counts
+    let most_common_card: CardValue = card_counts
         .iter()
+        .filter(|(&card, _)| card != &CardValue::Joker)
         .max_by_key(|&(_, count)| count)
         .map(|(&card, _)| card)
-        .unwrap_or(CardValue::Ace); // Default to Ace if no other cards
+        .unwrap_or(&CardValue::Ace)
+        .clone();
 
-    // Replace jokers with the most common card
-    let cards_with_jokers_replaced = cards
+    let cards_with_jokers_replaced: Vec<CardValue> = cards
         .iter()
         .map(|&card| {
             if card == CardValue::Joker {
@@ -104,9 +101,8 @@ fn determine_hand_type_with_joker(cards: &[CardValue]) -> HandType {
                 card
             }
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
 
-    // Determine the hand type with jokers replaced
     determine_hand_type(&cards_with_jokers_replaced)
 }
 
