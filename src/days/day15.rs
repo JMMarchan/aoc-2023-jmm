@@ -12,11 +12,11 @@ pub fn solve() -> SolutionPair {
     (Solution::from(sol1), Solution::from(sol2))
 }
 
-fn _function1(input: &[&str]) -> u64 {
+fn _function1(_input: &[&str]) -> u64 {
     0
 }
 
-fn _function2(input: &[&str]) -> u64 {
+fn _function2(_input: &[&str]) -> u64 {
     0
 }
 

@@ -73,38 +73,41 @@ fn parse_hand_and_bid(input: &str, joker: bool) -> (Hand, u64) {
 fn determine_hand_type_with_joker(cards: &[CardValue]) -> HandType {
     let mut counts = std::collections::HashMap::new();
     let mut joker_count = 0;
-    for card in cards {
-        if *card == CardValue::Joker {
+
+    for &card in cards {
+        if card == CardValue::Joker {
             joker_count += 1;
         } else {
             *counts.entry(card).or_insert(0) += 1;
         }
     }
 
+    // If all cards are jokers
     if joker_count == cards.len() {
         return HandType::FiveOfAKind;
     }
 
-    let mut best_hand = HandType::HighCard;
-    for (value, _) in &counts {
-        for joker_combination in 0..=joker_count {
-            let mut cards_with_jokers = cards.to_vec();
-            for _ in 0..joker_combination {
-                if let Some(joker_index) = cards_with_jokers
-                    .iter()
-                    .position(|&card| card == CardValue::Joker)
-                {
-                    cards_with_jokers[joker_index] = **value;
-                }
+    // Find the most common card (excluding jokers)
+    let most_common_card = counts
+        .iter()
+        .max_by_key(|&(_, count)| count)
+        .map(|(&card, _)| card)
+        .unwrap_or(CardValue::Ace); // Default to Ace if no other cards
+
+    // Replace jokers with the most common card
+    let cards_with_jokers_replaced = cards
+        .iter()
+        .map(|&card| {
+            if card == CardValue::Joker {
+                most_common_card
+            } else {
+                card
             }
-            // println!("Cards with jokers: {:?}", cards_with_jokers);
-            let hand_type = determine_hand_type(&cards_with_jokers);
-            if hand_type > best_hand {
-                best_hand = hand_type;
-            }
-        }
-    }
-    best_hand
+        })
+        .collect::<Vec<_>>();
+
+    // Determine the hand type with jokers replaced
+    determine_hand_type(&cards_with_jokers_replaced)
 }
 
 fn determine_hand_type(cards: &[CardValue]) -> HandType {
