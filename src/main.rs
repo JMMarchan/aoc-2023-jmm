@@ -9,22 +9,51 @@ use days::{
 use etc::solution::Solution;
 use std::env;
 use std::time::Instant;
+use chrono::prelude::*;
 
 pub type SolutionPair = (Solution, Solution);
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    // If no arguments are given, try to find the latest day with a non-zero solution pair.
     if args.len() < 2 {
-        panic!("Please provide the day(s) to run as a command-line argument.");
+        // Check what day of December it is (ie, EST since problems come out at EST) and try that day.
+        // If it's after the 25th, then try the 25th.
+        // If the solution pair is zero, try the previous day until you find a non-zero solution pair.
+        let now = Local::now();
+        let later = Local.with_ymd_and_hms(2023, 12, 25, 0, 0, 0).unwrap();
+        let mut day = if now > later {
+            25
+        } else {
+            now.day()
+        };
+
+        let mut sol = get_day_solver(day as u8);
+        while sol().0 == Solution::from(0) || sol().1 == Solution::from(0) {
+            println!("Day {} solution is zero, trying previous day...", day);
+            day -= 1;
+            sol = get_day_solver(day as u8);
+        }
+        // Print the solution
+        println!("\n=== Day {:02} ===", day);
+        println!("  · Part 1: {}", sol().0);
+        println!("  · Part 2: {}", sol().1);
+        return;
     }
 
-    let days: Vec<u8> = args[1..]
-        .iter()
-        .map(|x| {
-            x.parse()
-                .unwrap_or_else(|v| panic!("Not a valid day: {}", v))
-        })
-        .collect();
+    // Check if -all is given as an argument, and if so, run all days.
+    let days: Vec<u8> = if args[1] == "-all" {
+        (1..=25).collect()
+    } else {
+        // Otherwise, parse the arguments as days.
+        args[1..]
+            .iter()
+            .map(|x| {
+                x.parse()
+                    .unwrap_or_else(|v| panic!("Not a valid day: {}", v))
+            })
+            .collect()
+    };
 
     let mut runtime = 0.0;
 
