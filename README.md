@@ -47,6 +47,7 @@ cargo run --release -- [days...]
 ## Refactoring
 
 - [ ] General code cleanup/optimization
+  - [ ] Day 1 is far and away my slowest solution (~300 ms, next slowest is ~150 ms)
 - [ ] Use grid crate for all the 2D grid problems:
   - [ ] Day 3: Gear Ratios
   - [ ] Day 10: Pipe Maze

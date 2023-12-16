@@ -2,14 +2,15 @@
 mod days;
 mod etc;
 
+use chrono::prelude::*;
 use days::{
     day01, day02, day03, day04, day05, day06, day07, day08, day09, day10, day11, day12, day13,
     day14, day15, day16, day17, day18, day19, day20, day21, day22, day23, day24, day25,
 };
 use etc::solution::Solution;
+use itertools::Itertools;
 use std::env;
 use std::time::Instant;
-use chrono::prelude::*;
 
 pub type SolutionPair = (Solution, Solution);
 
@@ -22,22 +23,42 @@ fn main() {
         // If the solution pair is zero, try the previous day until you find a non-zero solution pair.
         let now = Local::now();
         let later = Local.with_ymd_and_hms(2023, 12, 25, 0, 0, 0).unwrap();
-        let mut day = if now > later {
-            25
-        } else {
-            now.day()
-        };
+        let day = if now > later { 25 } else { now.day() };
 
-        let mut sol = get_day_solver(day as u8);
-        while sol().0 == Solution::from(0) || sol().1 == Solution::from(0) {
-            println!("Day {} solution is zero, trying previous day...", day);
-            day -= 1;
-            sol = get_day_solver(day as u8);
+        let mut current_day = day;
+        let mut p1;
+        let mut p2;
+        let mut elapsed_ms;
+
+        loop {
+            if current_day < day {
+                println!(
+                    "Day {} solution is zero, trying previous day {}...",
+                    current_day + 1,
+                    current_day
+                );
+            } else {
+                println!(
+                    "No day argument given. Today is day {}, so trying that day...",
+                    current_day
+                );
+            }
+            let func = get_day_solver(current_day as u8);
+            let time = Instant::now();
+            let (p1_curr, p2_curr) = func();
+            elapsed_ms = time.elapsed().as_nanos() as f64 / 1_000_000.0;
+            p1 = p1_curr;
+            p2 = p2_curr;
+            if p1 != Solution::from(0) && p2 != Solution::from(0) {
+                break;
+            }
+            current_day -= 1;
         }
-        // Print the solution
-        println!("\n=== Day {:02} ===", day);
-        println!("  · Part 1: {}", sol().0);
-        println!("  · Part 2: {}", sol().1);
+
+        println!("\n=== Day {:02} ===", current_day);
+        println!("  · Part 1: {}", p1);
+        println!("  · Part 2: {}", p2);
+        println!("  · Elapsed: {:.4} ms", elapsed_ms);
         return;
     }
 
@@ -55,7 +76,7 @@ fn main() {
             .collect()
     };
 
-    let mut runtime = 0.0;
+    let mut runtimes = vec![];
 
     for day in days {
         let func = get_day_solver(day);
@@ -64,15 +85,37 @@ fn main() {
         let (p1, p2) = func();
         let elapsed_ms = time.elapsed().as_nanos() as f64 / 1_000_000.0;
 
+        if p1 == Solution::from(0u64) && p2 == Solution::from(0u64) {
+            continue;
+        }
+
         println!("\n=== Day {:02} ===", day);
         println!("  · Part 1: {}", p1);
         println!("  · Part 2: {}", p2);
         println!("  · Elapsed: {:.4} ms", elapsed_ms);
 
-        runtime += elapsed_ms;
+        runtimes.push(elapsed_ms);
     }
 
-    println!("Total runtime: {:.4} ms", runtime);
+    let total_runtime = runtimes.iter().sum::<f64>();
+    println!("Total runtime: {:.4} ms", total_runtime);
+    println!(
+        "Average runtime: {:.4} ms",
+        total_runtime / runtimes.len() as f64
+    );
+    // print runtimes in order from fastest to slowest
+    // runtimes.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // println!("Runtimes (fastest to slowest):");
+    // runtimes.iter().enumerate().for_each(|(i, runtime)| {
+    //     println!("Day {:02}: {:.4} ms", i+1, runtime);
+    // }); // this is wrong because it sorts the runtimes but doesn't keep the day numbers in the correct order
+    runtimes
+        .iter()
+        .enumerate()
+        .sorted_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .for_each(|(i, runtime)| {
+            println!("Day {:02}: {:.4} ms", i + 1, runtime);
+        });
 }
 
 fn get_day_solver(day: u8) -> fn() -> SolutionPair {
