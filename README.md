@@ -1,6 +1,6 @@
 # aoc-2023-jmm
 
-This repository contains my solutions for the [Advent of Code 2023](https://adventofcode.com/2023) challenge, implemented in Rust. The project structure comes from [agubelu/AoC-rust-template](https://github.com/agubelu/AoC-rust-template/tree/master).
+This repository contains my Rust solutions for [Advent of Code 2023](https://adventofcode.com/2023), using [agubelu/AoC-rust-template](https://github.com/agubelu/AoC-rust-template/tree/master).
 
 ## Running the Solutions
 
@@ -34,7 +34,7 @@ cargo run --release -- [days...]
 | 14  | :star:      | :star:      |
 | 15  | :star:      | :star:      |
 | 16  | :star:      | :star:      |
-| 17  | :hourglass: | :hourglass: |
+| 17  | :star:      | :star:      |
 | 18  | :hourglass: | :hourglass: |
 | 19  | :hourglass: | :hourglass: |
 | 20  | :hourglass: | :hourglass: |
@@ -47,8 +47,8 @@ cargo run --release -- [days...]
 ## Refactoring
 
 - [ ] General code cleanup/optimization
-  - [ ] Day 1 is far and away my slowest solution (~300 ms, next slowest is ~150 ms)
-- [ ] Use grid crate for all the 2D grid problems:
+  - [x] Day 1 is far and away my slowest solution (~300 ms, next slowest is ~150 ms)
+- [ ] Use grid crate for all the 2D grid problems (alternatively, use pathfinding crate with matrix like day 17)
   - [ ] Day 3: Gear Ratios
   - [ ] Day 10: Pipe Maze
   - [ ] Day 11: Cosmic Expansion
