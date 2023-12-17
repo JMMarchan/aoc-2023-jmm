@@ -1,5 +1,5 @@
 use crate::{Solution, SolutionPair};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use pathfinding::prelude::{astar, Matrix};
 use rayon::prelude::*;
 use std::fs::read_to_string;
@@ -99,13 +99,30 @@ fn successors(
     next_crucibles
 }
 
-fn manhattan_distance(pos: (usize, usize), goal: (usize, usize)) -> usize {
-    let dx = isize::abs(pos.0 as isize - goal.0 as isize);
-    let dy = isize::abs(pos.1 as isize - goal.1 as isize);
-    (dx + dy) as usize
+// Manhattan distance is not a good heuristic because long straight lines are not penalized enough.
+// To more accurately represent the cost of long straight lines, we use a slither pattern.
+fn heuristic(pos: (usize, usize), goal: (usize, usize), min_len: usize, max_len: usize) -> usize {
+    let dx = isize::abs(pos.0 as isize - goal.0 as isize) as usize;
+    let dy = isize::abs(pos.1 as isize - goal.1 as isize) as usize;
+
+    let straight_line_distance = dx.max(dy);
+
+    if dx == 0 || dy == 0 {
+        // If we're aligned either horizontally or vertically with the goal,
+        // calculate the cost using a slither pattern.
+        let full_cycles = straight_line_distance / (max_len + min_len);
+        let remaining_distance = straight_line_distance % (max_len + min_len);
+
+        let additional_cost = if remaining_distance <= max_len { 1 } else { 2 };
+
+        full_cycles * 2 + additional_cost
+    } else {
+        // If diagonal, take an average of the two distances as a simple approximation.
+        (dx + dy) / 2
+    }
 }
 
-fn min_heat_loss(input: &str, max_run_length: usize, min_run_length: usize) -> usize {
+fn min_heat_loss(input: &str, max_len: usize, min_len: usize) -> usize {
     let grid = input
         .lines()
         .map(|line| line.chars().map(|c| c.to_digit(10).unwrap() as u8))
@@ -118,14 +135,53 @@ fn min_heat_loss(input: &str, max_run_length: usize, min_run_length: usize) -> u
 
     let end = (grid.rows - 1, grid.columns - 1);
 
-    astar(
+    let (_path, cost) = astar(
         &start,
-        |crucible| successors(&grid, crucible, max_run_length, min_run_length),
-        |crucible| manhattan_distance(crucible.position, end),
+        |crucible| successors(&grid, crucible, max_len, min_len),
+        |crucible| heuristic(crucible.position, end, min_len, max_len),
         |crucible| crucible.position == end,
     )
-    .map(|(_, cost)| cost)
-    .unwrap()
+    .unwrap();
+
+    // TODO: add some parameter to print the path
+    // let mut grid_view = grid.map(|num| char::from_digit(num as u32, 10).unwrap());
+    //
+    // // Backtrack from the end to the start, marking the path
+    // for (index, state) in _path.iter().enumerate().rev() {
+    //     let mut current_position = state.position;
+    //     if current_position == start.position {
+    //         break;
+    //     }
+    //     let next_state = &_path[index - 1];
+    //
+    //     // Mark the path
+    //     let (di, dj) = state.direction.to_delta();
+    //     while current_position != next_state.position {
+    //         grid_view[current_position] = match state.direction {
+    //             Direction::North => '↑',
+    //             Direction::South => '↓',
+    //             Direction::East => '→',
+    //             Direction::West => '←',
+    //             _ => unreachable!(),
+    //         };
+    //         current_position = (
+    //             (current_position.0 as isize - di) as usize,
+    //             (current_position.1 as isize - dj) as usize,
+    //         );
+    //     }
+    // }
+    //
+    // grid_view[start.position] = '•'; // Start position marked with a dot
+    //
+    // // Print the grid with the path
+    // for row in grid_view.iter() {
+    //     for &cell in row.iter() {
+    //         print!("{}", cell);
+    //     }
+    //     println!();
+    // }
+
+    cost
 }
 
 #[cfg(test)]

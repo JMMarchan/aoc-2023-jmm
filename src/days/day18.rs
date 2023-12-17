@@ -13,7 +13,7 @@ pub fn solve() -> SolutionPair {
     (Solution::from(sol1), Solution::from(sol2))
 }
 
-fn function1(_input: &[&str]) -> u64 {
+fn _function1(_input: &[&str]) -> u64 {
     0
 }
 
@@ -30,6 +30,6 @@ line3"#
     #[test]
     fn test_function_1() {
         let input = test_input().lines().collect::<Vec<&str>>();
-        assert_eq!(function1(&input), 0);
+        assert_eq!(_function1(&input), 0);
     }
 }

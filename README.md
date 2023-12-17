@@ -54,3 +54,4 @@ cargo run --release -- [days...]
   - [ ] Day 11: Cosmic Expansion
   - [ ] Day 13: Point of Incidence
   - [ ] Day 14: Parabolic Reflector Dish
+- [ ] Add optional visualizations for all solutions
