@@ -8,6 +8,7 @@ use days::{
     day14, day15, day16, day17, day18, day19, day20, day21, day22, day23, day24, day25,
 };
 use etc::solution::Solution;
+use hashbrown::HashMap;
 use itertools::Itertools;
 use std::env;
 use std::time::Instant;
@@ -76,7 +77,7 @@ fn main() {
             .collect()
     };
 
-    let mut runtimes = vec![];
+    let mut runtimes: HashMap<u8, f64> = HashMap::new();
 
     for day in days {
         let func = get_day_solver(day);
@@ -85,7 +86,7 @@ fn main() {
         let (p1, p2) = func();
         let elapsed_ms = time.elapsed().as_nanos() as f64 / 1_000_000.0;
 
-        if p1 == Solution::from(0u64) && p2 == Solution::from(0u64) {
+        if p1 == Solution::from(0) && p2 == Solution::from(0) {
             continue;
         }
 
@@ -94,27 +95,23 @@ fn main() {
         println!("  · Part 2: {}", p2);
         println!("  · Elapsed: {:.4} ms", elapsed_ms);
 
-        runtimes.push(elapsed_ms);
+        runtimes.insert(day, elapsed_ms);
     }
 
-    let total_runtime = runtimes.iter().sum::<f64>();
-    println!("Total runtime: {:.4} ms", total_runtime);
+    let total_runtime = runtimes.values().sum::<f64>();
+    println!("\nTotal runtime: {:.4} ms", total_runtime);
     println!(
         "Average runtime: {:.4} ms",
         total_runtime / runtimes.len() as f64
     );
-    // print runtimes in order from fastest to slowest
-    // runtimes.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    // println!("Runtimes (fastest to slowest):");
-    // runtimes.iter().enumerate().for_each(|(i, runtime)| {
-    //     println!("Day {:02}: {:.4} ms", i+1, runtime);
-    // }); // this is wrong because it sorts the runtimes but doesn't keep the day numbers in the correct order
+
+    println!("\n=== Sorted Runtimes ===");
+    // Print runtimes in order from fastest to slowest
     runtimes
         .iter()
-        .enumerate()
         .sorted_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-        .for_each(|(i, runtime)| {
-            println!("Day {:02}: {:.4} ms", i + 1, runtime);
+        .for_each(|(day, runtime)| {
+            println!("Day {:02}: {:.4} ms", day, runtime);
         });
 }
 

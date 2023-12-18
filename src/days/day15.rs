@@ -83,31 +83,21 @@ fn initialization_sequence(input: &str) -> u64 {
         // Run the hash algorithm on the label to get the box number
         let box_number = hash_algorithm(label) as usize;
 
-        let box_to_operate_on = &mut boxes[box_number];
+        let r#box = &mut boxes[box_number];
         match operation {
             "-" => {
-                // Remove the lens with the given label if it exists
-                let lens_index = box_to_operate_on
-                    .lenses
-                    .iter()
-                    .position(|lens| lens.label == label);
-                if let Some(index) = lens_index {
-                    box_to_operate_on.lenses.remove(index);
-                }
+                r#box.lenses.retain(|lens| lens.label != label);
             }
             "=" => {
                 // Replace or add the lens with the given label
-                let lens_index = box_to_operate_on
-                    .lenses
-                    .iter()
-                    .position(|lens| lens.label == label);
+                let lens_index = r#box.lenses.iter().position(|lens| lens.label == label);
                 if let Some(index) = lens_index {
-                    box_to_operate_on.lenses[index] = Lens {
+                    r#box.lenses[index] = Lens {
                         label: label.to_string(),
                         focal_length,
                     };
                 } else {
-                    box_to_operate_on.lenses.push(Lens {
+                    r#box.lenses.push(Lens {
                         label: label.to_string(),
                         focal_length,
                     });
