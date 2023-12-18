@@ -50,7 +50,7 @@ fn main() {
             elapsed_ms = time.elapsed().as_nanos() as f64 / 1_000_000.0;
             p1 = p1_curr;
             p2 = p2_curr;
-            if p1 != Solution::from(0) && p2 != Solution::from(0) {
+            if p1 != Solution::from(0) || p2 != Solution::from(0) {
                 break;
             }
             current_day -= 1;
