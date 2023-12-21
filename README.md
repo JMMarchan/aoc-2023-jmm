@@ -35,10 +35,10 @@ cargo run --release -- [days...]
 | 15  | :star:      | :star:      |
 | 16  | :star:      | :star:      |
 | 17  | :star:      | :star:      |
-| 18  | :hourglass: | :hourglass: |
-| 19  | :hourglass: | :hourglass: |
-| 20  | :hourglass: | :hourglass: |
-| 21  | :hourglass: | :hourglass: |
+| 18  | :star:      | :star:      |
+| 19  | :star:      | :star:      |
+| 20  | :star:      | :star:      |
+| 21  | :star:      | :star:      |
 | 22  | :hourglass: | :hourglass: |
 | 23  | :hourglass: | :hourglass: |
 | 24  | :hourglass: | :hourglass: |
@@ -47,7 +47,7 @@ cargo run --release -- [days...]
 ## Refactoring
 
 - [ ] General code cleanup/optimization
-  - [x] Day 1 is far and away my slowest solution (~300 ms, next slowest is ~150 ms)
+  - [ ] Day 8 and 20 both need some cleanup
 - [ ] Use grid crate for all the 2D grid problems (alternatively, use pathfinding crate with matrix like day 17)
   - [ ] Day 3: Gear Ratios
   - [ ] Day 10: Pipe Maze
