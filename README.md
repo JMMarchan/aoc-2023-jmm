@@ -39,7 +39,7 @@ cargo run --release -- [days...]
 | 19  | :star:      | :star:      |
 | 20  | :star:      | :star:      |
 | 21  | :star:      | :star:      |
-| 22  | :hourglass: | :hourglass: |
+| 22  | :star:      | :star:      |
 | 23  | :hourglass: | :hourglass: |
 | 24  | :hourglass: | :hourglass: |
 | 25  | :hourglass: | :hourglass: |
